@@ -75,15 +75,7 @@
 
 
     /* ═══════════════════════════════════════════════
-       5. CLIENTS CAROUSEL — pure CSS marquee
-          translateX(-50%) works because PHP renders
-          every client twice, so 50% = one full set.
-    ═══════════════════════════════════════════════ */
-    // No JS needed — animation is defined entirely in style.css
-
-
-    /* ═══════════════════════════════════════════════
-       6. SERVICE MODAL
+       5. SERVICE MODAL
     ═══════════════════════════════════════════════ */
     var svcModal   = document.getElementById('svcModal');
     var slidesWrap = document.getElementById('svcmSlides');
@@ -159,7 +151,7 @@
 
 
     /* ═══════════════════════════════════════════════
-       7. VERIFICATION MODAL
+       6. VERIFICATION MODAL
     ═══════════════════════════════════════════════ */
     var verifyModal    = document.getElementById('verifyModal');
     var vmEmailDisplay = document.getElementById('vmEmailDisplay');
@@ -414,7 +406,7 @@
 
 
     /* ═══════════════════════════════════════════════
-       8. AUTO-DISMISS BOOTSTRAP ALERTS
+       7. AUTO-DISMISS BOOTSTRAP ALERTS
     ═══════════════════════════════════════════════ */
     document.querySelectorAll('.alert').forEach(function (alert) {
         setTimeout(function () {

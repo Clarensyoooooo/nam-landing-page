@@ -60,7 +60,7 @@ unset($service);
                 Trusted Construction Partner
             </span>
             <h1>Built for Business,<br><span class="highlight">Powered by Supply</span></h1>
-            <p>Complete construction and industrial solutions for residential, commercial, and industrial projects.</p>
+            <p>Trusted one-stop shop for a wide array of builder and supply needs.</p>
             <div class="hero-buttons">
                 <a href="#services" class="btn-primary-main">
                     <i class="fas fa-cogs"></i> Our Services
@@ -70,10 +70,7 @@ unset($service);
                 </a>
             </div>
         </div>
-        <div class="hero-scroll-hint">
-            <small>Scroll</small>
-            <span><i class="fas fa-chevron-down"></i></span>
-        </div>
+
     </section>
 
     <!-- ── Stats Bar ── -->
@@ -105,12 +102,12 @@ unset($service);
         <div class="container-lg">
             <div class="section-title reveal">
                 <span class="section-tag">Who We Are</span>
-                <h2>About NAM Builders</h2>
+                <h2>About Us</h2>
                 <p>Over a decade of building trust, one project at a time.</p>
             </div>
             <div class="about-content reveal">
                 <p style="text-align:center;font-size:1.08rem;color:var(--text-light);max-width:680px;margin:0 auto;">
-                    NAM Builders and Supply Corp is a leading construction and industrial services company providing complete solutions for residential, commercial, and industrial projects. We specialize in general construction, renovation, electrical systems, fire protection, steel fabrication, office fit-outs, and building maintenance.
+                    Trusted one-stop shop for a wide array of builder and supply needs. With a strong commitment to high-quality workmanship and efficient progress, we take pride in being your reliable contractor.
                 </p>
             </div>
             <div class="features-grid">
@@ -201,34 +198,36 @@ unset($service);
     </div>
 
     <!-- ── Clients ── -->
-    <section class="clients-section light-bg" id="clients">
+    <section class="clients-section" id="clients">
         <div class="container-lg">
             <div class="section-title reveal">
                 <span class="section-tag">Who We Work With</span>
                 <h2>Our Trusted Clients</h2>
                 <p>Partnering with industry leaders to deliver excellence.</p>
             </div>
-            <div class="clients-carousel">
-                <div class="carousel-track">
-                    <?php
-                    // Render clients TWICE for seamless infinite loop
-                    $allClients = array_merge($clients, $clients);
-                    foreach ($allClients as $client):
-                    ?>
-                        <div class="carousel-item">
-                            <?php if (!empty($client['image_path'])): ?>
-                                <img src="<?php echo UPLOADS_URL . htmlspecialchars($client['image_path']); ?>"
-                                     alt="<?php echo sanitize($client['client_name']); ?>"
-                                     loading="lazy">
-                            <?php else: ?>
-                                <div class="carousel-placeholder">
-                                    <i class="fas fa-building"></i>
-                                    <span><?php echo sanitize($client['client_name']); ?></span>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
+        </div>
+
+        <!-- Full-width marquee strip (intentionally outside container for edge-to-edge) -->
+        <div class="clients-marquee-wrap">
+            <div class="clients-marquee-track">
+                <?php
+                // Render the list TWICE — translateX(-50%) lands exactly back at start
+                $loop = array_merge($clients, $clients);
+                foreach ($loop as $client):
+                ?>
+                    <div class="clients-marquee-item">
+                        <?php if (!empty($client['image_path'])): ?>
+                            <img src="<?php echo UPLOADS_URL . htmlspecialchars($client['image_path']); ?>"
+                                 alt="<?php echo sanitize($client['client_name']); ?>"
+                                 loading="lazy">
+                        <?php else: ?>
+                            <div class="clients-marquee-placeholder">
+                                <i class="fas fa-building"></i>
+                                <span><?php echo sanitize($client['client_name']); ?></span>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
             </div>
         </div>
     </section>
