@@ -33,7 +33,7 @@ unset($service);
         <nav class="navbar navbar-expand-lg navbar-light">
             <div class="container-lg">
                 <a class="navbar-brand" href="#home">
-                    <img src="uploads/nam-logo.png" alt="NAM Builders" onerror="this.style.display='none'">
+                    <img src="css/assets/logo.png" alt="NAM Builders" onerror="this.style.display='none'">
                     <span>NAM Builders <span style="color:var(--primary-color);">&amp; Supply Corp.</span></span>
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -208,7 +208,7 @@ unset($service);
                 <div class="val-center reveal reveal-delay-2">
                     <div class="val-center-ring">
                         <div class="val-center-inner">
-                            <img src="uploads/nam-logo.png"
+                            <img src="css/assets/logo.png"
                                  alt="NAM Builders and Supply Corp."
                                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                             <div class="val-logo-placeholder" style="display:none;">
@@ -345,36 +345,23 @@ unset($service);
         </div>
     </div>
 
-    <!-- ══════════════════════════════════════════════════════
-         OUR TEAM SECTION
-    ══════════════════════════════════════════════════════ -->
+    <!-- ── Team ── -->
     <section id="team">
         <div class="container-lg">
-
             <div class="section-title reveal">
                 <span class="section-tag">The People Behind the Work</span>
                 <h2>Our Team</h2>
                 <p>Dedicated professionals committed to delivering excellence on every project.</p>
             </div>
-
             <div class="team-grid">
-
-                <!-- Card 1 -->
                 <div class="team-card reveal reveal-delay-1">
                     <div class="team-photo">
-                        <img src="css/assets/hero-bg.jpg"
-                             alt="Team Member">
+                        <img src="css/assets/hero-bg.jpg" alt="Team Member">
                         <div class="team-hover-overlay">
                             <div class="team-socials">
-                                <a href="https://www.facebook.com/k8.kit" class="team-social-btn" title="Facebook">
-                                    <i class="fab fa-facebook-f"></i>
-                                </a>
-                                <a href="#" class="team-social-btn" title="Twitter / X">
-                                    <i class="fab fa-x-twitter"></i>
-                                </a>
-                                <a href="#" class="team-social-btn" title="LinkedIn">
-                                    <i class="fab fa-linkedin-in"></i>
-                                </a>
+                                <a href="https://www.facebook.com/k8.kit" class="team-social-btn" title="Facebook"><i class="fab fa-facebook-f"></i></a>
+                                <a href="#" class="team-social-btn" title="Twitter / X"><i class="fab fa-x-twitter"></i></a>
+                                <a href="#" class="team-social-btn" title="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
                             </div>
                             <p class="team-hover-quote">"Excellence is not a skill, it's an attitude."</p>
                         </div>
@@ -384,23 +371,14 @@ unset($service);
                         <span class="team-role">Project Manager</span>
                     </div>
                 </div>
-
-                <!-- Card 2 -->
                 <div class="team-card reveal reveal-delay-2">
                     <div class="team-photo">
-                        <img src="css/assets/hero-bg.jpg"
-                             alt="Team Member">
+                        <img src="css/assets/hero-bg.jpg" alt="Team Member">
                         <div class="team-hover-overlay">
                             <div class="team-socials">
-                                <a href="#" class="team-social-btn" title="Facebook">
-                                    <i class="fab fa-facebook-f"></i>
-                                </a>
-                                <a href="#" class="team-social-btn" title="Twitter / X">
-                                    <i class="fab fa-x-twitter"></i>
-                                </a>
-                                <a href="#" class="team-social-btn" title="LinkedIn">
-                                    <i class="fab fa-linkedin-in"></i>
-                                </a>
+                                <a href="#" class="team-social-btn" title="Facebook"><i class="fab fa-facebook-f"></i></a>
+                                <a href="#" class="team-social-btn" title="Twitter / X"><i class="fab fa-x-twitter"></i></a>
+                                <a href="#" class="team-social-btn" title="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
                             </div>
                             <p class="team-hover-quote">"Building trust, one project at a time."</p>
                         </div>
@@ -410,23 +388,14 @@ unset($service);
                         <span class="team-role">Founder, CEO</span>
                     </div>
                 </div>
-
-                <!-- Card 3 -->
                 <div class="team-card reveal reveal-delay-3">
                     <div class="team-photo">
-                        <img src="css/assets/hero-bg.jpg"
-                             alt="Team Member">
+                        <img src="css/assets/hero-bg.jpg" alt="Team Member">
                         <div class="team-hover-overlay">
                             <div class="team-socials">
-                                <a href="#" class="team-social-btn" title="Facebook">
-                                    <i class="fab fa-facebook-f"></i>
-                                </a>
-                                <a href="#" class="team-social-btn" title="Twitter / X">
-                                    <i class="fab fa-x-twitter"></i>
-                                </a>
-                                <a href="#" class="team-social-btn" title="LinkedIn">
-                                    <i class="fab fa-linkedin-in"></i>
-                                </a>
+                                <a href="#" class="team-social-btn" title="Facebook"><i class="fab fa-facebook-f"></i></a>
+                                <a href="#" class="team-social-btn" title="Twitter / X"><i class="fab fa-x-twitter"></i></a>
+                                <a href="#" class="team-social-btn" title="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
                             </div>
                             <p class="team-hover-quote">"Quality is never an accident."</p>
                         </div>
@@ -436,23 +405,14 @@ unset($service);
                         <span class="team-role">Lead Engineer</span>
                     </div>
                 </div>
-
-                <!-- Card 4 -->
                 <div class="team-card reveal reveal-delay-4">
                     <div class="team-photo">
-                        <img src="css/assets/hero-bg.jpg"
-                             alt="Team Member">
+                        <img src="css/assets/hero-bg.jpg" alt="Team Member">
                         <div class="team-hover-overlay">
                             <div class="team-socials">
-                                <a href="#" class="team-social-btn" title="Facebook">
-                                    <i class="fab fa-facebook-f"></i>
-                                </a>
-                                <a href="#" class="team-social-btn" title="Twitter / X">
-                                    <i class="fab fa-x-twitter"></i>
-                                </a>
-                                <a href="#" class="team-social-btn" title="LinkedIn">
-                                    <i class="fab fa-linkedin-in"></i>
-                                </a>
+                                <a href="#" class="team-social-btn" title="Facebook"><i class="fab fa-facebook-f"></i></a>
+                                <a href="#" class="team-social-btn" title="Twitter / X"><i class="fab fa-x-twitter"></i></a>
+                                <a href="#" class="team-social-btn" title="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
                             </div>
                             <p class="team-hover-quote">"Safety first, quality always."</p>
                         </div>
@@ -462,22 +422,17 @@ unset($service);
                         <span class="team-role">Safety Officer</span>
                     </div>
                 </div>
-
-            </div><!-- /.team-grid -->
+            </div>
         </div>
     </section>
 
-    <!-- ══════════════════════════════════════════════════════
-         CONTACT MODAL
-    ══════════════════════════════════════════════════════ -->
+    <!-- ── Contact Modal ── -->
     <div id="contactModal" role="dialog" aria-modal="true" aria-labelledby="contactModalTitle">
         <div class="cm-box">
-
-            <!-- Left decorative panel -->
             <div class="cm-left">
                 <div class="cm-left-inner">
                     <div class="cm-left-logo">
-                        <img src="uploads/nam-logo.png" alt="NAM Builders"
+                        <img src="css/assets/logo.png" alt="NAM Builders"
                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                         <div class="cm-logo-fallback" style="display:none;">
                             <i class="fas fa-building"></i>
@@ -501,21 +456,16 @@ unset($service);
                     </div>
                 </div>
             </div>
-
-            <!-- Right form panel -->
             <div class="cm-right">
                 <button class="cm-close" id="contactModalCloseBtn" title="Close">&times;</button>
-
                 <div class="cm-right-inner">
                     <span class="section-tag">Reach Out</span>
                     <h2 id="contactModalTitle">Send Us a Message</h2>
                     <div class="cm-title-rule"></div>
-
                     <div id="contactSuccessBanner">
                         <i class="fas fa-check-circle"></i>
                         <span id="contactSuccessMsg"></span>
                     </div>
-
                     <form id="contactForm" novalidate>
                         <div class="cm-row">
                             <div class="form-group">
@@ -554,7 +504,6 @@ unset($service);
                     </form>
                 </div>
             </div>
-
         </div>
     </div>
 

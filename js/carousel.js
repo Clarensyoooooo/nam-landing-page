@@ -181,7 +181,6 @@
     function openContactModal() {
         contactModal.classList.add('open');
         document.body.style.overflow = 'hidden';
-        // small delay so animation fires after display
         requestAnimationFrame(function () {
             var firstInput = contactModal.querySelector('input');
             if (firstInput) firstInput.focus();
@@ -195,15 +194,11 @@
 
     // Nav button
     var navContactBtn = document.getElementById('navContactBtn');
-    if (navContactBtn) {
-        navContactBtn.addEventListener('click', openContactModal);
-    }
+    if (navContactBtn) navContactBtn.addEventListener('click', openContactModal);
 
     // Hero "Inquire Now" button
     var heroContactBtn = document.getElementById('heroContactBtn');
-    if (heroContactBtn) {
-        heroContactBtn.addEventListener('click', openContactModal);
-    }
+    if (heroContactBtn) heroContactBtn.addEventListener('click', openContactModal);
 
     // Footer contact link
     var footerContactLink = document.getElementById('footerContactLink');
@@ -227,14 +222,11 @@
        VMO ACCORDION
     ═══════════════════════════════════════════════ */
     (function () {
-        var vmoOrder = ['vision', 'mission', 'objectives'];
         var triggers = document.querySelectorAll('.vmo-trigger');
         var panels   = document.querySelectorAll('.vmo-panel');
-
         if (!triggers.length || !panels.length) return;
 
         function openVmo(key) {
-            if (vmoOrder.indexOf(key) === -1) return;
             triggers.forEach(function (t) {
                 t.classList.toggle('active', t.getAttribute('data-vmo') === key);
             });
@@ -244,9 +236,7 @@
         }
 
         triggers.forEach(function (t) {
-            t.addEventListener('click', function () {
-                openVmo(t.getAttribute('data-vmo'));
-            });
+            t.addEventListener('click', function () { openVmo(t.getAttribute('data-vmo')); });
         });
 
         openVmo('vision');
@@ -465,7 +455,7 @@
         );
     });
 
-    /* verify button */
+    /* ── verify button ── */
     vmVerifyBtn.addEventListener('click', function () {
         var code = getCode();
         if (code.length !== 6) return;
@@ -487,21 +477,23 @@
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (data.success) {
+                    // 1. Close the verify modal
                     closeVerifyModal();
-                    closeContactModal();
+
+                    // 2. Reset the form
                     contactForm.reset();
 
-                    // Show a brief success toast / banner
+                    // 3. Show success banner INSIDE the contact modal (keep it open)
                     var banner = document.getElementById('contactSuccessBanner');
                     var msgEl  = document.getElementById('contactSuccessMsg');
-                    msgEl.textContent = data.message;
-                    banner.classList.add('show');
-                    // Re-open modal to show banner then auto-close
+                    if (banner && msgEl) {
+                        msgEl.textContent = data.message;
+                        banner.classList.add('show');
+                    }
+
+                    // 4. Keep contact modal open — user will close it manually
                     openContactModal();
-                    setTimeout(function () {
-                        banner.classList.remove('show');
-                        closeContactModal();
-                    }, 5000);
+
                 } else {
                     shakeDigits();
                     showVmAlert(data.message, 'error');

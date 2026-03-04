@@ -34,11 +34,19 @@ if ($result) {
     <div style="display: flex; height: 100vh;">
         <!-- Sidebar -->
         <div class="admin-sidebar" style="width: 250px; background-color: var(--primary-color); color: white; overflow-y: auto;">
-            <div style="padding: 2rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                <h5 style="margin: 0; color: var(--light-bg)">
-                    </i> NAM Builders and Supply Corps.
-                </h5>
-                <small style="color: var(--light-bg);">Admin Panel</small>
+            <div style="padding: 1.5rem 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: .75rem;">
+                <img src="../css/assets/logo.png"
+                     alt="NAM Builders"
+                     style="height: 38px; width: auto; object-fit: contain; flex-shrink: 0;"
+                     onerror="this.style.display='none'">
+                <div>
+                    <div style="font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:1rem; color:#fff; line-height:1.2;">
+                        NAM Builders
+                    </div>
+                    <div style="font-size:.72rem; color:rgba(255,255,255,.65); font-weight:600; letter-spacing:.04em; text-transform:uppercase;">
+                        Admin Panel
+                    </div>
+                </div>
             </div>
 
             <nav style="padding: 1rem 0;">
@@ -54,7 +62,7 @@ if ($result) {
                 <a href="dashboard.php?page=messages" class="admin-nav-link <?php echo $page === 'messages' ? 'active' : ''; ?>">
                     <i class="fas fa-envelope"></i> Messages
                     <?php if ($stats['unread_messages'] > 0): ?>
-                        <span style="background-color: var(--primary-color); color: white; border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; margin-left: auto;">
+                        <span style="background-color: #FFC107; color: #333; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.72rem; margin-left: auto; font-weight: 800;">
                             <?php echo $stats['unread_messages']; ?>
                         </span>
                     <?php endif; ?>
@@ -89,7 +97,6 @@ if ($result) {
             <div class="admin-main" style="flex: 1; overflow-y: auto;">
                 <div class="container-lg">
                     <?php
-                    // Load appropriate page
                     switch($page) {
                         case 'clients':
                             require 'pages/clients.php';
