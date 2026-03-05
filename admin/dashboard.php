@@ -29,94 +29,343 @@ if ($result) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../css/style.css">
+    <style>
+        /* ══ Mobile-responsive admin layout ══ */
+        .admin-layout {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ── Sidebar ── */
+        .admin-sidebar {
+            width: 250px;
+            flex-shrink: 0;
+            background-color: var(--primary-color);
+            color: #fff;
+            height: 100vh;
+            overflow-y: auto;
+            transition: transform .3s ease;
+            z-index: 1100;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Sidebar overlay (mobile) ── */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.55);
+            z-index: 1090;
+        }
+        .sidebar-overlay.active { display: block; }
+
+        /* ── Main content column ── */
+        .admin-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        /* ── Top header ── */
+        .admin-header {
+            background: #fff;
+            padding: .85rem 1.5rem;
+            box-shadow: 0 1px 4px rgba(0,0,0,.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .admin-header h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .admin-top-right {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            flex-shrink: 0;
+        }
+
+        /* ── Hamburger button ── */
+        .sidebar-toggle-btn {
+            display: none;
+            background: var(--light-bg);
+            border: 1.5px solid var(--border-color);
+            border-radius: 8px;
+            width: 38px;
+            height: 38px;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-dark);
+            font-size: 1rem;
+            transition: background .2s, border-color .2s;
+            flex-shrink: 0;
+        }
+        .sidebar-toggle-btn:hover {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: #fff;
+        }
+
+        /* ── Scrollable content area ── */
+        .admin-main {
+            flex: 1;
+            overflow-y: auto;
+            background: var(--light-bg);
+            padding: 1.5rem;
+        }
+
+        /* ── Sidebar nav link ── */
+        .admin-nav-link {
+            color: rgba(255,255,255,.85);
+            padding: .82rem 1.4rem .82rem 1.2rem;
+            margin: .18rem 0 .18rem .8rem;
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            text-decoration: none;
+            transition: all .22s;
+            border: none;
+            font-weight: 600;
+            font-size: .93rem;
+            border-radius: 50px 0 0 50px;
+        }
+        .admin-nav-link:hover {
+            background: rgba(255,255,255,.18);
+            color: #fff;
+        }
+        .admin-nav-link.active {
+            background: #fff;
+            color: var(--primary-color) !important;
+            font-weight: 700;
+            box-shadow: 0 3px 12px rgba(0,0,0,.15);
+            border-radius: 50px 0 0 50px;
+        }
+        .admin-nav-link.active i { color: var(--primary-color) !important; }
+        .admin-nav-link.logout-link { color: #ffcdd2 !important; }
+        .admin-nav-link.logout-link:hover {
+            background: rgba(255,82,82,.2) !important;
+            color: #ff5252 !important;
+        }
+
+        /* ══ MOBILE ══ */
+        @media (max-width: 768px) {
+            .admin-layout {
+                flex-direction: column;
+                height: 100dvh;
+            }
+
+            /* Sidebar slides in from left as overlay */
+            .admin-sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100dvh;
+                transform: translateX(-100%);
+                width: 260px;
+            }
+            .admin-sidebar.active {
+                transform: translateX(0);
+                box-shadow: 4px 0 24px rgba(0,0,0,.3);
+            }
+
+            /* Body takes full width */
+            .admin-body {
+                width: 100%;
+                height: 100dvh;
+            }
+
+            /* Show hamburger */
+            .sidebar-toggle-btn {
+                display: flex;
+            }
+
+            .admin-header {
+                padding: .75rem 1rem;
+            }
+
+            .admin-header h3 {
+                font-size: 1rem;
+            }
+
+            .admin-main {
+                padding: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .admin-header h3 {
+                font-size: .92rem;
+            }
+            .admin-top-right span {
+                display: none; /* Hide "Welcome, username" on very small screens */
+            }
+        }
+    </style>
 </head>
 <body>
-    <div style="display: flex; height: 100vh;">
-        <!-- Sidebar -->
-        <div class="admin-sidebar" style="width: 250px; background-color: var(--primary-color); color: white; overflow-y: auto;">
-            <div style="padding: 1.5rem 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: .75rem;">
-                <img src="../css/assets/logo.png"
-                     alt="NAM Builders"
-                     style="height: 38px; width: auto; object-fit: contain; flex-shrink: 0;"
-                     onerror="this.style.display='none'">
-                <div>
-                    <div style="font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:1rem; color:#fff; line-height:1.2;">
-                        NAM Builders
-                    </div>
-                    <div style="font-size:.72rem; color:rgba(255,255,255,.65); font-weight:600; letter-spacing:.04em; text-transform:uppercase;">
-                        Admin Panel
-                    </div>
+
+<!-- Sidebar overlay (mobile tap-outside-to-close) -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<div class="admin-layout">
+    <!-- ── Sidebar ── -->
+    <div class="admin-sidebar" id="adminSidebar">
+        <!-- Brand -->
+        <div style="padding: 1.4rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.15); display: flex; align-items: center; gap: .75rem; flex-shrink: 0; background: var(--primary-color);">
+            <img src="../css/assets/logo.png"
+                 alt="NAM Builders"
+                 style="height: 36px; width: auto; object-fit: contain; flex-shrink: 0;"
+                 onerror="this.style.display='none'">
+            <div>
+                <div style="font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:.95rem; color:#fff; line-height:1.2;">
+                    NAM Builders
+                </div>
+                <div style="font-size:.68rem; color:rgba(255,255,255,.7); font-weight:600; letter-spacing:.06em; text-transform:uppercase;">
+                    Admin Panel
                 </div>
             </div>
+            
+        </div>
 
-            <nav style="padding: 1rem 0;">
+        <!-- Nav links -->
+        <nav style="padding: .75rem 0; flex: 1; display: flex; flex-direction: column;">
+            <div style="flex: 1;">
                 <a href="dashboard.php" class="admin-nav-link <?php echo $page === 'overview' ? 'active' : ''; ?>">
-                    <i class="fas fa-chart-line"></i> Overview
+                    <i class="fas fa-chart-line" style="width:16px; text-align:center;"></i> Overview
                 </a>
                 <a href="dashboard.php?page=clients" class="admin-nav-link <?php echo $page === 'clients' ? 'active' : ''; ?>">
-                    <i class="fas fa-users"></i> Clients
+                    <i class="fas fa-users" style="width:16px; text-align:center;"></i> Clients
                 </a>
                 <a href="dashboard.php?page=services" class="admin-nav-link <?php echo $page === 'services' ? 'active' : ''; ?>">
-                    <i class="fas fa-cogs"></i> Services
+                    <i class="fas fa-cogs" style="width:16px; text-align:center;"></i> Services
                 </a>
                 <a href="dashboard.php?page=messages" class="admin-nav-link <?php echo $page === 'messages' ? 'active' : ''; ?>">
-                    <i class="fas fa-envelope"></i> Messages
+                    <i class="fas fa-envelope" style="width:16px; text-align:center;"></i> Messages
                     <?php if ($stats['unread_messages'] > 0): ?>
-                        <span style="background-color: #FFC107; color: #333; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.72rem; margin-left: auto; font-weight: 800;">
+                        <span style="background-color:#FFC107; color:#333; border-radius:50%; width:20px; height:20px; display:inline-flex; align-items:center; justify-content:center; font-size:.68rem; margin-left:auto; font-weight:800; flex-shrink:0;">
                             <?php echo $stats['unread_messages']; ?>
                         </span>
                     <?php endif; ?>
                 </a>
-                <hr style="margin: 1rem 0; border-color: rgba(255,255,255,0.1);">
-                <a href="../backend/logout.php" class="admin-nav-link" style="color: #FF6B6B;">
-                    <i class="fas fa-sign-out-alt"></i> Logout
+            </div>
+            <div style="padding-bottom: .5rem;">
+                <hr style="margin: .5rem 0 .5rem .8rem; border-color: rgba(255,255,255,0.2);">
+                <a href="../backend/logout.php" class="admin-nav-link logout-link">
+                    <i class="fas fa-sign-out-alt" style="width:16px; text-align:center;"></i> Logout
                 </a>
-            </nav>
-        </div>
+            </div>
+        </nav>
+    </div>
 
-        <!-- Main Content -->
-        <div style="flex: 1; display: flex; flex-direction: column;">
-            <!-- Top Header -->
-            <div class="admin-header">
-                <h3 style="margin: 0;">
-                    <?php 
+    <!-- ── Main content ── -->
+    <div class="admin-body">
+        <!-- Top header bar -->
+        <div class="admin-header">
+            <div style="display:flex; align-items:center; gap:.75rem; min-width:0;">
+                <!-- Hamburger (shown on mobile) -->
+                <button class="sidebar-toggle-btn" id="sidebarToggleBtn" title="Open menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h3>
+                    <?php
                     switch($page) {
-                        case 'clients': echo 'Manage Clients'; break;
+                        case 'clients':  echo 'Manage Clients';  break;
                         case 'services': echo 'Manage Services'; break;
                         case 'messages': echo 'Contact Messages'; break;
-                        default: echo 'Dashboard Overview';
+                        default:         echo 'Dashboard Overview';
                     }
                     ?>
                 </h3>
-                <div class="admin-top-nav">
-                    <span>Welcome, <strong><?php echo sanitize($_SESSION['admin_username']); ?></strong></span>
-                </div>
             </div>
+            <div class="admin-top-right">
+                <span style="font-size:.88rem; color:var(--text-light);">
+                    Welcome, <strong style="color:var(--text-dark);"><?php echo sanitize($_SESSION['admin_username']); ?></strong>
+                </span>
+                <!-- Unread messages badge (mobile quick-access) -->
+                <?php if ($stats['unread_messages'] > 0): ?>
+                    <a href="dashboard.php?page=messages"
+                       style="background:#FFC107; color:#333; border-radius:50px; padding:.25rem .7rem; font-size:.78rem; font-weight:800; text-decoration:none; display:flex; align-items:center; gap:.35rem;">
+                        <i class="fas fa-envelope"></i>
+                        <?php echo $stats['unread_messages']; ?>
+                    </a>
+                <?php endif; ?>
+            </div>
+        </div>
 
-            <!-- Content Area -->
-            <div class="admin-main" style="flex: 1; overflow-y: auto;">
-                <div class="container-lg">
-                    <?php
-                    switch($page) {
-                        case 'clients':
-                            require 'pages/clients.php';
-                            break;
-                        case 'services':
-                            require 'pages/services.php';
-                            break;
-                        case 'messages':
-                            require 'pages/messages.php';
-                            break;
-                        default:
-                            require 'pages/overview.php';
-                    }
-                    ?>
-                </div>
+        <!-- Page content -->
+        <div class="admin-main">
+            <div class="container-lg" style="max-width: 1200px;">
+                <?php
+                switch($page) {
+                    case 'clients':
+                        require 'pages/clients.php';
+                        break;
+                    case 'services':
+                        require 'pages/services.php';
+                        break;
+                    case 'messages':
+                        require 'pages/messages.php';
+                        break;
+                    default:
+                        require 'pages/overview.php';
+                }
+                ?>
             </div>
         </div>
     </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="../js/admin.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../js/admin.js"></script>
+<script>
+/* ── Mobile sidebar toggle ── */
+(function () {
+    var sidebar  = document.getElementById('adminSidebar');
+    var overlay  = document.getElementById('sidebarOverlay');
+    var toggleBtn = document.getElementById('sidebarToggleBtn');
+    var closeBtn  = document.getElementById('sidebarCloseBtn');
+
+    function openSidebar() {
+        sidebar.classList.add('active');
+        overlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeSidebar() {
+        sidebar.classList.remove('active');
+        overlay.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    toggleBtn.addEventListener('click', openSidebar);
+    closeBtn.addEventListener('click', closeSidebar);
+    overlay.addEventListener('click', closeSidebar);
+
+    // Close sidebar on nav link click (mobile)
+    sidebar.querySelectorAll('.admin-nav-link').forEach(function (link) {
+        link.addEventListener('click', function () {
+            if (window.innerWidth <= 768) closeSidebar();
+        });
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeSidebar();
+    });
+}());
+</script>
 </body>
 </html>

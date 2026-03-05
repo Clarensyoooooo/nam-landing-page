@@ -1909,6 +1909,158 @@ footer {
 .badge { color: #fff; padding: .25rem .65rem; border-radius: 50px; font-size: .78rem; font-weight: 700; display: inline-block; }
 
 /* ── Admin Panel ── */
+
+/* ══════════════════════════════════════════════
+   admin-responsive.css
+   Mobile-first fixes for the admin panel
+══════════════════════════════════════════════ */
+
+/* ── Scrollable table wrapper ── */
+.admin-card {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.admin-table {
+    min-width: 540px; /* prevents squishing on narrow screens */
+}
+
+/* ── Stack stats grid on small screens ── */
+@media (max-width: 576px) {
+    /* Overview stat cards: 2-col on mobile */
+    [style*="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))"] {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 1rem !important;
+    }
+
+    /* Quick actions: single column */
+    [style*="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr))"] {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Admin card padding */
+    .admin-card {
+        padding: 1rem !important;
+    }
+
+    /* Smaller table text */
+    .admin-table th,
+    .admin-table td {
+        padding: .6rem .75rem;
+        font-size: .82rem;
+    }
+
+    /* Action buttons smaller */
+    .btn-edit,
+    .btn-delete {
+        padding: .35rem .65rem;
+        font-size: .78rem;
+    }
+
+    /* Modal full-width on mobile */
+    .modal-content {
+        max-width: 100% !important;
+        width: 95vw !important;
+        max-height: 92dvh !important;
+        overflow-y: auto !important;
+        margin: 0 auto;
+    }
+
+    /* Confirm modal */
+    .confirm-modal-box {
+        max-width: 95vw !important;
+        margin: 0 1rem;
+    }
+
+    /* Message modal */
+    .msg-modal-box {
+        max-width: 100% !important;
+        max-height: 96dvh !important;
+        border-radius: 16px 16px 0 0 !important;
+    }
+    .msg-modal-overlay {
+        align-items: flex-end !important;
+        padding: 0 !important;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Page heading row: stack vertically */
+    [style*="display: flex; justify-content: space-between"] {
+        flex-wrap: wrap;
+        gap: .75rem;
+    }
+
+    .btn-add {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+    }
+
+    /* Stats: single column */
+    [style*="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))"] {
+        grid-template-columns: 1fr 1fr !important;
+    }
+
+    /* Service/edit modal scrollable */
+    .modal-content[style*="max-width: 580px"] {
+        max-width: 100% !important;
+        width: 100% !important;
+        max-height: 95dvh !important;
+        border-radius: 16px 16px 0 0 !important;
+    }
+    .modal-overlay {
+        align-items: flex-end !important;
+        padding: 0 !important;
+    }
+
+    /* Existing images grid: smaller thumbs */
+    .existing-img-item img,
+    .img-placeholder-box {
+        width: 64px !important;
+        height: 64px !important;
+    }
+
+    /* Messages search + heading */
+    [style*="justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap"] {
+        flex-direction: column;
+        align-items: stretch !important;
+    }
+    .msg-search-wrap {
+        max-width: 100% !important;
+    }
+}
+
+/* ── Ensure modals don't go off-screen on mid-size tablets ── */
+@media (max-width: 768px) {
+    .modal-overlay {
+        padding: .75rem;
+    }
+    .modal-content {
+        max-height: 90dvh;
+        overflow-y: auto;
+    }
+
+    /* Message details modal: full bottom sheet */
+    .msg-modal-overlay {
+        padding: .5rem;
+    }
+
+    /* Confirm modals: center with margin */
+    .confirm-modal-overlay {
+        padding: 1rem;
+    }
+}
+
+/* ── Make admin-main not overflow on iOS ── */
+.admin-main {
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ── Prevent horizontal page scroll ── */
+body {
+    overflow-x: hidden;
+}
 .admin-sidebar {
     background: var(--secondary-color);
     color: #fff;
