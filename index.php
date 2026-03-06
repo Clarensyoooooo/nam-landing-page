@@ -301,6 +301,478 @@ unset($service);
         </div>
     </section>
 
+    <!-- ════════════════════════════════════════════════════════
+        SUPPLIES SECTION  —  paste into index.php
+        Place this block AFTER the #clients section and BEFORE #founder
+        ════════════════════════════════════════════════════════ -->
+
+    <!-- ══ PHP data-fetching block — place at top of index.php with other queries ══
+    <?php
+    // Fetch supply categories with their supplies
+    $sup_cat_result = $conn->query("
+        SELECT sc.*,
+            COUNT(s.id) AS supply_count
+        FROM supply_categories sc
+        LEFT JOIN supplies s ON s.category_id = sc.id AND s.is_active = 1
+        WHERE sc.is_active = 1
+        GROUP BY sc.id
+        ORDER BY sc.sort_order ASC
+    ");
+    $supply_categories = $sup_cat_result ? $sup_cat_result->fetch_all(MYSQLI_ASSOC) : [];
+
+    $all_supplies_result = $conn->query("
+        SELECT s.*, sc.category_name, sc.color_hex, sc.icon_class
+        FROM supplies s
+        LEFT JOIN supply_categories sc ON s.category_id = sc.id
+        WHERE s.is_active = 1 AND sc.is_active = 1
+        ORDER BY sc.sort_order ASC, s.sort_order ASC
+    ");
+    $all_supplies = $all_supplies_result ? $all_supplies_result->fetch_all(MYSQLI_ASSOC) : [];
+    ?>
+    ══ end PHP block ══ -->
+
+    <section id="supplies">
+        <div class="container-lg">
+            <div class="section-title reveal">
+                <span class="section-tag">What We Supply</span>
+                <h2>Our Supply Catalog</h2>
+                <p>Sourcing quality construction, electrical, safety, and office supplies for every project need.</p>
+            </div>
+
+            <?php if (!empty($supply_categories)): ?>
+
+            <!-- ── Category filter pills ── -->
+            <div class="sup-filter-bar reveal">
+                <button class="sup-filter-pill active" data-filter="all">
+                    <i class="fas fa-layer-group"></i>
+                    <span>All</span>
+                    <em><?php echo count($all_supplies); ?></em>
+                </button>
+                <?php foreach ($supply_categories as $scat): ?>
+                    <?php if ($scat['supply_count'] > 0): ?>
+                    <button class="sup-filter-pill" data-filter="<?php echo $scat['id']; ?>"
+                            style="--cat-color:<?php echo htmlspecialchars($scat['color_hex']); ?>;">
+                        <i class="<?php echo htmlspecialchars($scat['icon_class']); ?>"></i>
+                        <span><?php echo htmlspecialchars($scat['category_name']); ?></span>
+                        <em><?php echo $scat['supply_count']; ?></em>
+                    </button>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </div>
+
+            <!-- ── Supply cards grid ── -->
+            <div class="sup-cards-grid" id="supCardsGrid">
+                <?php if (!empty($all_supplies)): ?>
+                    <?php foreach ($all_supplies as $i => $sup):
+                        $imgSrc = !empty($sup['image_path']) ? UPLOADS_URL . htmlspecialchars($sup['image_path']) : '';
+                        $delay  = ($i % 4) * 0.07;
+                    ?>
+                    <div class="sup-item reveal"
+                        data-cat="<?php echo $sup['category_id']; ?>"
+                        style="animation-delay:<?php echo $delay; ?>s;">
+                        <div class="sup-item-inner">
+                            <!-- image / icon area -->
+                            <div class="sup-item-img" style="--cat-bg:<?php echo htmlspecialchars($sup['color_hex'] ?? '#1565C0'); ?>;">
+                                <?php if ($imgSrc): ?>
+                                    <img src="<?php echo $imgSrc; ?>"
+                                        alt="<?php echo htmlspecialchars($sup['supply_name']); ?>"
+                                        loading="lazy">
+                                <?php else: ?>
+                                    <div class="sup-item-icon-placeholder">
+                                        <i class="<?php echo htmlspecialchars($sup['icon_class'] ?? 'fas fa-box'); ?>"></i>
+                                    </div>
+                                <?php endif; ?>
+                                <!-- category badge -->
+                                <span class="sup-item-cat-badge"
+                                    style="background:<?php echo htmlspecialchars($sup['color_hex'] ?? '#1565C0'); ?>;">
+                                    <i class="<?php echo htmlspecialchars($sup['icon_class'] ?? 'fas fa-box'); ?>"></i>
+                                    <?php echo htmlspecialchars($sup['category_name'] ?? ''); ?>
+                                </span>
+                            </div>
+                            <!-- text -->
+                            <div class="sup-item-body">
+                                <h4 class="sup-item-name"><?php echo htmlspecialchars($sup['supply_name']); ?></h4>
+                                <?php if (!empty($sup['unit'])): ?>
+                                    <span class="sup-item-unit">
+                                        <i class="fas fa-ruler-combined"></i>
+                                        per <?php echo htmlspecialchars($sup['unit']); ?>
+                                    </span>
+                                <?php endif; ?>
+                                <?php if (!empty($sup['description'])): ?>
+                                    <p class="sup-item-desc"><?php echo htmlspecialchars($sup['description']); ?></p>
+                                <?php endif; ?>
+                            </div>
+                            <!-- hover overlay cta -->
+                            <div class="sup-item-hover">
+                                <button class="sup-inquire-btn" onclick="openSupplyInquiry('<?php echo htmlspecialchars(addslashes($sup['supply_name'])); ?>')">
+                                    <i class="fas fa-paper-plane"></i> Inquire
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="sup-empty-state">
+                        <i class="fas fa-boxes"></i>
+                        <p>Supply catalog coming soon.</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- No-results message -->
+            <div id="supNoResultsPublic" style="display:none; text-align:center; color:var(--text-light); padding:3rem 1rem;">
+                <i class="fas fa-search" style="font-size:2.5rem; margin-bottom:.75rem; display:block; opacity:.4;"></i>
+                No supplies found in this category.
+            </div>
+
+            <?php else: ?>
+                <div style="text-align:center; color:var(--text-light); padding:2rem;">
+                    Supply catalog is being updated. Please check back soon.
+                </div>
+            <?php endif; ?>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════
+        CSS — add to css/style.css
+        ════════════════════════════════════════════════════════ -->
+    <style id="supplies-section-styles">
+    /* ══════════════════════════════════════════════════
+    SUPPLIES SECTION
+    ══════════════════════════════════════════════════ */
+    #supplies {
+        background: #fff;
+        padding: 90px 0;
+    }
+
+    /* ── Filter pill bar ── */
+    .sup-filter-bar {
+        display: flex;
+        gap: .55rem;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-bottom: 2.8rem;
+    }
+
+    .sup-filter-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        padding: .5rem 1.1rem;
+        border-radius: 50px;
+        border: 1.5px solid var(--border-color);
+        background: #fff;
+        color: var(--text-light);
+        font-size: .82rem;
+        font-weight: 700;
+        font-family: 'Barlow', sans-serif;
+        cursor: pointer;
+        transition: all .22s ease;
+        letter-spacing: .02em;
+        line-height: 1;
+    }
+
+    .sup-filter-pill em {
+        font-style: normal;
+        background: var(--light-bg);
+        color: var(--text-light);
+        border-radius: 50px;
+        padding: .1rem .42rem;
+        font-size: .7rem;
+        font-weight: 800;
+        transition: background .22s, color .22s;
+    }
+
+    .sup-filter-pill:hover,
+    .sup-filter-pill.active {
+        border-color: var(--cat-color, var(--primary-color));
+        background: var(--cat-color, var(--primary-color));
+        color: #fff;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(0,0,0,.15);
+    }
+
+    .sup-filter-pill:hover em,
+    .sup-filter-pill.active em {
+        background: rgba(255,255,255,.22);
+        color: #fff;
+    }
+
+    /* ── Cards grid ── */
+    .sup-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 1.4rem;
+    }
+
+    /* ── Individual supply card ── */
+    .sup-item {
+        /* used by JS filter */
+    }
+
+    .sup-item-inner {
+        background: #fff;
+        border: 1.5px solid var(--border-color);
+        border-radius: 14px;
+        overflow: hidden;
+        position: relative;
+        transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        cursor: pointer;
+    }
+
+    .sup-item-inner:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 16px 42px rgba(0,0,0,.12);
+        border-color: var(--primary-color);
+    }
+
+    /* image / icon placeholder */
+    .sup-item-img {
+        height: 160px;
+        background: linear-gradient(135deg,
+            color-mix(in srgb, var(--cat-bg, #1565C0) 10%, #f4f7fb),
+            color-mix(in srgb, var(--cat-bg, #1565C0) 5%, #fff));
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .sup-item-img img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform .4s ease;
+    }
+
+    .sup-item-inner:hover .sup-item-img img {
+        transform: scale(1.06);
+    }
+
+    .sup-item-icon-placeholder {
+        font-size: 2.8rem;
+        color: var(--cat-bg, #1565C0);
+        opacity: .25;
+        transition: opacity .3s, transform .3s;
+    }
+
+    .sup-item-inner:hover .sup-item-icon-placeholder {
+        opacity: .38;
+        transform: scale(1.1);
+    }
+
+    /* category badge on the image */
+    .sup-item-cat-badge {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        font-size: .62rem;
+        font-weight: 800;
+        letter-spacing: .07em;
+        text-transform: uppercase;
+        color: #fff;
+        padding: .22rem .6rem;
+        border-radius: 50px;
+        white-space: nowrap;
+        max-width: calc(100% - 20px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* text body */
+    .sup-item-body {
+        padding: 1rem 1rem .9rem;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: .35rem;
+    }
+
+    .sup-item-name {
+        font-size: .9rem;
+        font-weight: 800;
+        color: var(--text-dark);
+        margin: 0;
+        line-height: 1.35;
+    }
+
+    .sup-item-unit {
+        font-size: .72rem;
+        font-weight: 700;
+        color: var(--text-light);
+        display: inline-flex;
+        align-items: center;
+        gap: .28rem;
+    }
+
+    .sup-item-desc {
+        font-size: .78rem;
+        color: var(--text-light);
+        line-height: 1.6;
+        margin: 0;
+        flex: 1;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* hover overlay with Inquire button */
+    .sup-item-hover {
+        position: absolute;
+        inset: 0;
+        background: rgba(21, 101, 192, 0.0);
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding-bottom: 1.1rem;
+        opacity: 0;
+        transition: opacity .28s ease, background .28s ease;
+        pointer-events: none;
+    }
+
+    .sup-item-inner:hover .sup-item-hover {
+        opacity: 1;
+        background: rgba(21, 101, 192, 0.06);
+        pointer-events: all;
+    }
+
+    .sup-inquire-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        background: var(--primary-color);
+        color: #fff;
+        border: none;
+        padding: .6rem 1.4rem;
+        border-radius: 50px;
+        font-size: .82rem;
+        font-weight: 800;
+        font-family: 'Barlow', sans-serif;
+        letter-spacing: .04em;
+        cursor: pointer;
+        box-shadow: 0 8px 20px rgba(21, 101, 192, 0.4);
+        transform: translateY(6px);
+        transition: background .2s, transform .25s ease, box-shadow .2s;
+    }
+
+    .sup-item-inner:hover .sup-inquire-btn {
+        transform: translateY(0);
+    }
+
+    .sup-inquire-btn:hover {
+        background: var(--primary-dark);
+        box-shadow: 0 10px 26px rgba(21, 101, 192, 0.5);
+    }
+
+    /* hidden card during filter */
+    .sup-item.sup-hidden {
+        display: none;
+    }
+
+    /* empty state */
+    .sup-empty-state {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 4rem 1rem;
+        color: var(--text-light);
+    }
+    .sup-empty-state i {
+        font-size: 3.5rem;
+        margin-bottom: 1rem;
+        display: block;
+        opacity: .3;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+        .sup-cards-grid {
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 1rem;
+        }
+        .sup-item-img { height: 130px; }
+        .sup-filter-bar { gap: .4rem; }
+        .sup-filter-pill { font-size: .76rem; padding: .42rem .85rem; }
+    }
+
+    @media (max-width: 480px) {
+        .sup-cards-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: .75rem;
+        }
+        .sup-item-img { height: 110px; }
+        .sup-item-name { font-size: .82rem; }
+        .sup-item-body { padding: .75rem .75rem .7rem; }
+    }
+    </style>
+
+    <!-- ════════════════════════════════════════════════════════
+        JS — add inside the IIFE in js/carousel.js
+        ════════════════════════════════════════════════════════ -->
+    <script>
+    (function () {
+        /* ── Supply section filter ── */
+        var supPills = document.querySelectorAll('.sup-filter-pill');
+        var supItems = document.querySelectorAll('#supCardsGrid .sup-item');
+        var supNoRes = document.getElementById('supNoResultsPublic');
+
+        if (!supPills.length) return;
+
+        supPills.forEach(function (pill) {
+            pill.addEventListener('click', function () {
+                supPills.forEach(function (p) { p.classList.remove('active'); });
+                pill.classList.add('active');
+
+                var filter = pill.getAttribute('data-filter');
+                var visible = 0;
+
+                supItems.forEach(function (item) {
+                    var show = filter === 'all' || item.getAttribute('data-cat') === filter;
+                    item.classList.toggle('sup-hidden', !show);
+                    if (show) visible++;
+                });
+
+                if (supNoRes) supNoRes.style.display = visible === 0 ? '' : 'none';
+            });
+        });
+
+        /* ── Inquire button pre-fills contact modal ── */
+        window.openSupplyInquiry = function (supplyName) {
+            var serviceSelect = document.getElementById('cf_service');
+            if (serviceSelect) {
+                // Try to match exact option, or just set as text in a hidden note
+                var matched = false;
+                for (var i = 0; i < serviceSelect.options.length; i++) {
+                    if (serviceSelect.options[i].text.toLowerCase().includes('supply') ||
+                        serviceSelect.options[i].value.toLowerCase().includes('supply')) {
+                        serviceSelect.value = serviceSelect.options[i].value;
+                        matched = true;
+                        break;
+                    }
+                }
+            }
+            var msgField = document.getElementById('cf_message');
+            if (msgField && !msgField.value.trim()) {
+                msgField.value = 'I am interested in: ' + supplyName + '\n\nPlease send me availability and pricing information.';
+            }
+            // Open the contact modal
+            var contactModal = document.getElementById('contactModal');
+            if (contactModal) {
+                contactModal.classList.add('open');
+                document.body.style.overflow = 'hidden';
+            }
+        };
+    }());
+    </script>
+    
+    <!-- ── Clients ── -->
     <section class="clients-section" id="clients">
         <div class="container-lg">
             <div class="section-title reveal">

@@ -509,6 +509,60 @@
             });
     });
 
+    (function () {
+        /* ── Supply section filter ── */
+        var supPills = document.querySelectorAll('.sup-filter-pill');
+        var supItems = document.querySelectorAll('#supCardsGrid .sup-item');
+        var supNoRes = document.getElementById('supNoResultsPublic');
+
+        if (!supPills.length) return;
+
+        supPills.forEach(function (pill) {
+            pill.addEventListener('click', function () {
+                supPills.forEach(function (p) { p.classList.remove('active'); });
+                pill.classList.add('active');
+
+                var filter = pill.getAttribute('data-filter');
+                var visible = 0;
+
+                supItems.forEach(function (item) {
+                    var show = filter === 'all' || item.getAttribute('data-cat') === filter;
+                    item.classList.toggle('sup-hidden', !show);
+                    if (show) visible++;
+                });
+
+                if (supNoRes) supNoRes.style.display = visible === 0 ? '' : 'none';
+            });
+        });
+
+        /* ── Inquire button pre-fills contact modal ── */
+        window.openSupplyInquiry = function (supplyName) {
+            var serviceSelect = document.getElementById('cf_service');
+            if (serviceSelect) {
+                // Try to match exact option, or just set as text in a hidden note
+                var matched = false;
+                for (var i = 0; i < serviceSelect.options.length; i++) {
+                    if (serviceSelect.options[i].text.toLowerCase().includes('supply') ||
+                        serviceSelect.options[i].value.toLowerCase().includes('supply')) {
+                        serviceSelect.value = serviceSelect.options[i].value;
+                        matched = true;
+                        break;
+                    }
+                }
+            }
+            var msgField = document.getElementById('cf_message');
+            if (msgField && !msgField.value.trim()) {
+                msgField.value = 'I am interested in: ' + supplyName + '\n\nPlease send me availability and pricing information.';
+            }
+            // Open the contact modal
+            var contactModal = document.getElementById('contactModal');
+            if (contactModal) {
+                contactModal.classList.add('open');
+                document.body.style.overflow = 'hidden';
+            }
+        };
+    }());
+
     /* ═══════════════════════════════════════════════
     9. FOUNDER SECTION SCROLL REVEAL
     ═══════════════════════════════════════════════ */
