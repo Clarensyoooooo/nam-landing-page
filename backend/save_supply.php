@@ -1,4 +1,9 @@
 <?php
+// Output buffering prevents any stray PHP warnings from corrupting the JSON response
+ob_start();
+
+header('Content-Type: application/json');
+
 require_once '../config/database.php';
 require_once '../includes/functions.php';
 requireLogin();
@@ -18,52 +23,80 @@ try {
     if (empty($supply_name))  throw new Exception('Supply name is required.');
     if ($category_id <= 0)    throw new Exception('Please select a category.');
 
-    // Handle image upload
-    if (isset($_FILES['supply_image']) && $_FILES['supply_image']['size'] > 0) {
-        $upload_result = uploadFile($_FILES['supply_image'], UPLOADS_PATH . 'supplies/');
-        if (!$upload_result['success']) throw new Exception($upload_result['error']);
-        $image_path = 'supplies/' . $upload_result['filename'];
+    // Ensure uploads/supplies/ directory exists BEFORE attempting upload
+    $supplies_dir = UPLOADS_PATH . 'supplies/';
+    if (!is_dir($supplies_dir)) {
+        if (!mkdir($supplies_dir, 0755, true)) {
+            throw new Exception('Could not create uploads/supplies/ directory. Check server permissions.');
+        }
     }
 
-    // Ensure uploads/supplies/ directory exists
-    if (!is_dir(UPLOADS_PATH . 'supplies/')) {
-        mkdir(UPLOADS_PATH . 'supplies/', 0755, true);
+    // Handle image upload
+    if (isset($_FILES['supply_image']) && $_FILES['supply_image']['error'] === UPLOAD_ERR_OK && $_FILES['supply_image']['size'] > 0) {
+        $upload_result = uploadFile($_FILES['supply_image'], $supplies_dir);
+        if (!$upload_result['success']) throw new Exception($upload_result['error']);
+        $image_path = 'supplies/' . $upload_result['filename'];
+    } elseif (isset($_FILES['supply_image']) && $_FILES['supply_image']['error'] !== UPLOAD_ERR_NO_FILE && $_FILES['supply_image']['error'] !== UPLOAD_ERR_OK) {
+        // A file was attempted but had an upload error
+        $upload_errors = [
+            UPLOAD_ERR_INI_SIZE   => 'File exceeds server upload limit (upload_max_filesize).',
+            UPLOAD_ERR_FORM_SIZE  => 'File exceeds form upload limit.',
+            UPLOAD_ERR_PARTIAL    => 'File was only partially uploaded.',
+            UPLOAD_ERR_NO_TMP_DIR => 'Missing temporary folder on server.',
+            UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk.',
+            UPLOAD_ERR_EXTENSION  => 'A PHP extension blocked the upload.',
+        ];
+        $err_code = $_FILES['supply_image']['error'];
+        throw new Exception($upload_errors[$err_code] ?? 'Unknown file upload error (code ' . $err_code . ').');
     }
 
     if ($supply_id) {
         // UPDATE
-        $old = $conn->query("SELECT image_path FROM supplies WHERE id = " . $supply_id)->fetch_assoc();
-        if ($image_path && $old && $old['image_path']) {
+        $old_result = $conn->query("SELECT image_path FROM supplies WHERE id = " . intval($supply_id));
+        $old = $old_result ? $old_result->fetch_assoc() : null;
+
+        if ($image_path && $old && !empty($old['image_path'])) {
             deleteFile(UPLOADS_PATH . $old['image_path']);
         }
-        if (!$image_path && $old) $image_path = $old['image_path'];
+        if (!$image_path && $old) {
+            $image_path = $old['image_path'];
+        }
 
-        $stmt = $conn->prepare("UPDATE supplies SET category_id=?, supply_name=?, description=?, unit=?, image_path=?, sort_order=?, is_active=?, updated_at=NOW() WHERE id=?");
-        $stmt->bind_param("issssiiii", $category_id, $supply_name, $description, $unit, $image_path, $sort_order, $is_active, $supply_id);
+        $stmt = $conn->prepare(
+            "UPDATE supplies SET category_id=?, supply_name=?, description=?, unit=?, image_path=?, sort_order=?, is_active=?, updated_at=NOW() WHERE id=?"
+        );
+        if (!$stmt) throw new Exception('Prepare failed: ' . $conn->error);
+        $stmt->bind_param("isssssii", $category_id, $supply_name, $description, $unit, $image_path, $sort_order, $is_active, $supply_id);
 
         if ($stmt->execute()) {
             $response['success'] = true;
             $response['message'] = 'Supply updated successfully.';
         } else {
-            throw new Exception($stmt->error);
+            throw new Exception('Update failed: ' . $stmt->error);
         }
         $stmt->close();
+
     } else {
         // INSERT
-        $stmt = $conn->prepare("INSERT INTO supplies (category_id, supply_name, description, unit, image_path, sort_order, is_active) VALUES (?,?,?,?,?,?,?)");
+        $stmt = $conn->prepare(
+            "INSERT INTO supplies (category_id, supply_name, description, unit, image_path, sort_order, is_active) VALUES (?,?,?,?,?,?,?)"
+        );
+        if (!$stmt) throw new Exception('Prepare failed: ' . $conn->error);
         $stmt->bind_param("issssii", $category_id, $supply_name, $description, $unit, $image_path, $sort_order, $is_active);
 
         if ($stmt->execute()) {
             $response['success'] = true;
             $response['message'] = 'Supply added successfully.';
         } else {
-            throw new Exception($stmt->error);
+            throw new Exception('Insert failed: ' . $stmt->error);
         }
         $stmt->close();
     }
+
 } catch (Exception $e) {
     $response['message'] = $e->getMessage();
 }
 
-header('Content-Type: application/json');
+// Discard any stray output (PHP warnings etc.) so only clean JSON is sent
+ob_end_clean();
 echo json_encode($response);

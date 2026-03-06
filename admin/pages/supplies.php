@@ -1,10 +1,8 @@
 <?php
 // Supplies Management Page
-// Fetch all categories (for filter tabs + form dropdown)
 $cat_result = $conn->query("SELECT * FROM supply_categories ORDER BY sort_order ASC");
 $categories = $cat_result ? $cat_result->fetch_all(MYSQLI_ASSOC) : [];
 
-// Fetch all supplies with their category name
 $supplies_result = $conn->query("
     SELECT s.*, sc.category_name, sc.color_hex, sc.icon_class
     FROM supplies s
@@ -17,102 +15,6 @@ displayAlert();
 ?>
 
 <style>
-/* ── Tab bar ── */
-.sup-tabs {
-    display: flex; gap: .5rem; flex-wrap: wrap;
-    margin-bottom: 1.5rem;
-}
-.sup-tab {
-    display: inline-flex; align-items: center; gap: .45rem;
-    padding: .45rem 1rem; border-radius: 50px; font-size: .82rem;
-    font-weight: 700; border: 1.5px solid var(--border-color);
-    background: #fff; color: var(--text-light); cursor: pointer;
-    transition: all .2s; font-family: inherit; letter-spacing: .02em;
-}
-.sup-tab.active, .sup-tab:hover {
-    border-color: var(--primary-color);
-    background: var(--primary-color);
-    color: #fff;
-}
-.sup-tab .count-badge {
-    background: rgba(255,255,255,.25); color: #fff;
-    border-radius: 50px; padding: 0 .4rem; font-size: .7rem; font-weight: 800;
-}
-.sup-tab:not(.active) .count-badge { background: var(--light-bg); color: var(--text-light); }
-
-/* ── Supplies grid ── */
-.sup-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 1.2rem;
-    margin-top: .5rem;
-}
-.sup-card {
-    background: #fff; border: 1.5px solid var(--border-color);
-    border-radius: 12px; overflow: hidden;
-    transition: transform .25s, box-shadow .25s, border-color .25s;
-    display: flex; flex-direction: column;
-}
-.sup-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 32px rgba(0,0,0,.1);
-    border-color: var(--primary-color);
-}
-.sup-card-img {
-    height: 130px; background: var(--light-bg);
-    display: flex; align-items: center; justify-content: center;
-    overflow: hidden; position: relative;
-}
-.sup-card-img img { width:100%; height:100%; object-fit:cover; }
-.sup-card-img .no-img {
-    font-size: 2.2rem; color: var(--border-color);
-}
-.sup-cat-chip {
-    position: absolute; bottom: 8px; left: 8px;
-    font-size: .65rem; font-weight: 800; letter-spacing: .06em;
-    text-transform: uppercase; padding: .2rem .55rem;
-    border-radius: 50px; color: #fff;
-}
-.sup-card-body { padding: .9rem 1rem; flex: 1; display: flex; flex-direction: column; }
-.sup-card-name { font-size: .9rem; font-weight: 800; color: var(--text-dark); margin-bottom: .2rem; }
-.sup-card-unit { font-size: .73rem; color: var(--text-light); font-weight: 600; }
-.sup-card-desc { font-size: .78rem; color: var(--text-light); line-height: 1.55; margin: .45rem 0 0; flex: 1; }
-.sup-card-footer {
-    padding: .6rem 1rem; border-top: 1px solid var(--light-bg);
-    display: flex; gap: .4rem; justify-content: flex-end; background: #FAFBFF;
-}
-.sup-inactive { opacity: .55; }
-
-/* ── Category cards (in category tab) ── */
-.cat-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1rem; margin-top: .5rem;
-}
-.cat-card {
-    background: #fff; border: 1.5px solid var(--border-color);
-    border-radius: 12px; padding: 1.2rem 1rem;
-    display: flex; flex-direction: column; gap: .5rem;
-    transition: transform .25s, box-shadow .25s, border-color .25s;
-}
-.cat-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 24px rgba(0,0,0,.09);
-    border-color: var(--primary-color);
-}
-.cat-icon {
-    width: 42px; height: 42px; border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.1rem; color: #fff; margin-bottom: .3rem; flex-shrink: 0;
-}
-.cat-card h4 { font-size: .92rem; font-weight: 800; margin: 0; color: var(--text-dark); }
-.cat-card p  { font-size: .76rem; color: var(--text-light); margin: 0; line-height: 1.5; }
-.cat-card-footer {
-    margin-top: auto; display: flex; gap: .4rem;
-    justify-content: flex-end; padding-top: .6rem;
-    border-top: 1px solid var(--light-bg);
-}
-
 /* ── Confirm Modal ── */
 .confirm-modal-overlay {
     display: none; position: fixed; inset: 0;
@@ -162,6 +64,43 @@ displayAlert();
     transform:translateY(-1px); box-shadow:0 6px 18px rgba(220,53,69,.35);
 }
 
+/* ── Supply image thumbnail in table ── */
+.sup-thumb {
+    width: 44px; height: 44px; border-radius: 8px;
+    object-fit: cover; border: 1.5px solid var(--border-color);
+    background: var(--light-bg); display: block; flex-shrink: 0;
+}
+.sup-thumb-placeholder {
+    width: 44px; height: 44px; border-radius: 8px;
+    background: var(--light-bg); border: 1.5px solid var(--border-color);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--border-color); font-size: 1.1rem; flex-shrink: 0;
+}
+.sup-name-cell {
+    display: flex; align-items: center; gap: .75rem;
+}
+
+/* ── Category tab bar ── */
+.sup-tabs {
+    display: flex; gap: .45rem; flex-wrap: wrap; margin-bottom: 1.2rem;
+}
+.sup-tab {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .4rem .9rem; border-radius: 50px; font-size: .8rem;
+    font-weight: 700; border: 1.5px solid var(--border-color);
+    background: #fff; color: var(--text-light); cursor: pointer;
+    transition: all .2s; font-family: inherit;
+}
+.sup-tab.active, .sup-tab:hover {
+    border-color: var(--primary-color);
+    background: var(--primary-color); color: #fff;
+}
+.sup-tab .cbadge {
+    background: rgba(255,255,255,.22); color: #fff;
+    border-radius: 50px; padding: 0 .38rem; font-size: .68rem; font-weight: 800;
+}
+.sup-tab:not(.active) .cbadge { background: var(--light-bg); color: var(--text-light); }
+
 /* ── Search bar ── */
 .sup-search-wrap {
     display:flex; align-items:center; gap:.5rem;
@@ -179,18 +118,17 @@ displayAlert();
     color:#374151; width:100%; font-family:inherit; background:transparent;
 }
 
-/* top toolbar */
-.sup-toolbar {
-    display:flex; justify-content:space-between; align-items:center;
-    flex-wrap:wrap; gap:.75rem; margin-bottom:1.4rem;
-}
+/* ── No results row ── */
+#supNoResults { display: none; }
 </style>
 
 <!-- ══ Page toolbar ══ -->
-<div class="sup-toolbar">
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:.75rem;">
     <div>
-        <h2 style="margin:0;">Supplies</h2>
-        <p style="margin:0; font-size:.83rem; color:var(--text-light);">Manage products and supply categories</p>
+        <h2 style="margin:0;">Manage Supplies</h2>
+        <p style="margin:.2rem 0 0; font-size:.83rem; color:var(--text-light);">
+            <?php echo count($supplies); ?> total supplies across <?php echo count($categories); ?> categories
+        </p>
     </div>
     <div style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:center;">
         <div class="sup-search-wrap">
@@ -210,7 +148,7 @@ displayAlert();
 <div class="sup-tabs" id="supTabs">
     <button class="sup-tab active" data-cat="all" onclick="switchTab(this,'all')">
         <i class="fas fa-layer-group"></i> All
-        <span class="count-badge"><?php echo count($supplies); ?></span>
+        <span class="cbadge"><?php echo count($supplies); ?></span>
     </button>
     <?php foreach ($categories as $cat):
         $cnt = array_reduce($supplies, function($c,$s) use ($cat){ return $c + ($s['category_id']==$cat['id']?1:0); }, 0);
@@ -218,103 +156,169 @@ displayAlert();
     <button class="sup-tab" data-cat="<?php echo $cat['id']; ?>" onclick="switchTab(this,'<?php echo $cat['id']; ?>')">
         <i class="<?php echo htmlspecialchars($cat['icon_class']); ?>"></i>
         <?php echo htmlspecialchars($cat['category_name']); ?>
-        <span class="count-badge"><?php echo $cnt; ?></span>
+        <span class="cbadge"><?php echo $cnt; ?></span>
     </button>
     <?php endforeach; ?>
     <button class="sup-tab" data-cat="categories" onclick="switchTab(this,'categories')" style="margin-left:auto;">
-        <i class="fas fa-folder"></i> Manage Categories
+        <i class="fas fa-folder"></i> Categories
     </button>
 </div>
 
-<!-- ══ Supplies grid ══ -->
+<!-- ══ SUPPLIES TABLE VIEW ══ -->
 <div id="suppliesView">
-    <?php if (!empty($supplies)): ?>
-        <div class="sup-grid" id="suppliesGrid">
-            <?php foreach ($supplies as $sup): ?>
-            <div class="sup-card <?php echo !$sup['is_active'] ? 'sup-inactive' : ''; ?>"
-                 data-cat="<?php echo $sup['category_id']; ?>"
-                 data-search="<?php echo strtolower(htmlspecialchars($sup['supply_name'].' '.$sup['description'].' '.$sup['category_name'])); ?>">
-                <div class="sup-card-img">
-                    <?php if (!empty($sup['image_path'])): ?>
-                        <img src="<?php echo UPLOADS_URL . htmlspecialchars($sup['image_path']); ?>"
-                             alt="<?php echo htmlspecialchars($sup['supply_name']); ?>">
-                    <?php else: ?>
-                        <div class="no-img"><i class="<?php echo htmlspecialchars($sup['icon_class'] ?? 'fas fa-boxes'); ?>"></i></div>
-                    <?php endif; ?>
-                    <span class="sup-cat-chip" style="background:<?php echo htmlspecialchars($sup['color_hex'] ?? '#1565C0'); ?>;">
-                        <?php echo htmlspecialchars($sup['category_name'] ?? 'Uncategorized'); ?>
-                    </span>
-                    <?php if (!$sup['is_active']): ?>
-                        <span style="position:absolute;top:8px;right:8px;background:#6C757D;color:#fff;font-size:.6rem;font-weight:800;padding:.15rem .45rem;border-radius:4px;letter-spacing:.05em;">INACTIVE</span>
-                    <?php endif; ?>
-                </div>
-                <div class="sup-card-body">
-                    <div class="sup-card-name"><?php echo htmlspecialchars($sup['supply_name']); ?></div>
-                    <?php if (!empty($sup['unit'])): ?>
-                        <div class="sup-card-unit"><i class="fas fa-ruler-combined" style="font-size:.65rem;margin-right:.2rem;"></i>Unit: <?php echo htmlspecialchars($sup['unit']); ?></div>
-                    <?php endif; ?>
-                    <?php if (!empty($sup['description'])): ?>
-                        <div class="sup-card-desc"><?php echo htmlspecialchars(substr($sup['description'], 0, 90)) . (strlen($sup['description'])>90?'…':''); ?></div>
-                    <?php endif; ?>
-                </div>
-                <div class="sup-card-footer">
-                    <button class="btn-edit" onclick="editSupply(<?php echo $sup['id']; ?>)" title="Edit">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-delete" onclick="openSupplyDeleteConfirm(<?php echo $sup['id']; ?>,'<?php echo addslashes(htmlspecialchars($sup['supply_name'])); ?>')" title="Delete">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-        <div id="supNoResults" style="display:none; text-align:center; color:var(--text-light); padding:3rem;">
-            <i class="fas fa-search" style="font-size:2rem; margin-bottom:.75rem; display:block;"></i>
-            No supplies match your search.
-        </div>
-    <?php else: ?>
+    <div class="admin-card">
+        <?php if (!empty($supplies)): ?>
+        <table class="admin-table" id="suppliesTable">
+            <thead>
+                <tr>
+                    <th>Supply</th>
+                    <th>Category</th>
+                    <th>Unit</th>
+                    <th>Description</th>
+                    <th>Order</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($supplies as $sup): ?>
+                <tr data-cat="<?php echo $sup['category_id']; ?>"
+                    data-search="<?php echo strtolower(htmlspecialchars($sup['supply_name'].' '.$sup['description'].' '.$sup['category_name'])); ?>">
+                    <td>
+                        <div class="sup-name-cell">
+                            <?php if (!empty($sup['image_path'])): ?>
+                                <img class="sup-thumb"
+                                     src="<?php echo UPLOADS_URL . htmlspecialchars($sup['image_path']); ?>"
+                                     alt="<?php echo htmlspecialchars($sup['supply_name']); ?>">
+                            <?php else: ?>
+                                <div class="sup-thumb-placeholder">
+                                    <i class="<?php echo htmlspecialchars($sup['icon_class'] ?? 'fas fa-box'); ?>"></i>
+                                </div>
+                            <?php endif; ?>
+                            <span style="font-weight:700; font-size:.9rem;">
+                                <?php echo htmlspecialchars($sup['supply_name']); ?>
+                            </span>
+                        </div>
+                    </td>
+                    <td>
+                        <span style="display:inline-flex; align-items:center; gap:.35rem;
+                                     background:<?php echo htmlspecialchars($sup['color_hex'] ?? '#1565C0'); ?>20;
+                                     color:<?php echo htmlspecialchars($sup['color_hex'] ?? '#1565C0'); ?>;
+                                     border:1px solid <?php echo htmlspecialchars($sup['color_hex'] ?? '#1565C0'); ?>40;
+                                     border-radius:50px; padding:.2rem .65rem;
+                                     font-size:.76rem; font-weight:800; white-space:nowrap;">
+                            <i class="<?php echo htmlspecialchars($sup['icon_class'] ?? 'fas fa-box'); ?>" style="font-size:.65rem;"></i>
+                            <?php echo htmlspecialchars($sup['category_name'] ?? 'Uncategorized'); ?>
+                        </span>
+                    </td>
+                    <td style="font-size:.85rem; color:var(--text-light);">
+                        <?php echo !empty($sup['unit']) ? htmlspecialchars($sup['unit']) : '—'; ?>
+                    </td>
+                    <td style="font-size:.83rem; color:var(--text-light); max-width:220px;">
+                        <?php if (!empty($sup['description'])): ?>
+                            <?php echo htmlspecialchars(substr($sup['description'], 0, 70)) . (strlen($sup['description']) > 70 ? '…' : ''); ?>
+                        <?php else: ?>
+                            <span style="opacity:.45;">—</span>
+                        <?php endif; ?>
+                    </td>
+                    <td style="font-size:.85rem; text-align:center;"><?php echo $sup['sort_order']; ?></td>
+                    <td>
+                        <span class="badge" style="background-color:<?php echo $sup['is_active'] ? '#28A745' : '#6C757D'; ?>;">
+                            <?php echo $sup['is_active'] ? 'Active' : 'Inactive'; ?>
+                        </span>
+                    </td>
+                    <td>
+                        <div class="admin-actions">
+                            <button class="btn-edit" onclick="editSupply(<?php echo $sup['id']; ?>)" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-delete" onclick="openSupplyDeleteConfirm(<?php echo $sup['id']; ?>,'<?php echo addslashes(htmlspecialchars($sup['supply_name'])); ?>')" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+                <tr id="supNoResults">
+                    <td colspan="7" style="text-align:center; color:var(--text-light); padding:2.5rem;">
+                        <i class="fas fa-search" style="margin-right:.4rem;"></i> No supplies match your search.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <?php else: ?>
         <div style="text-align:center; color:var(--text-light); padding:3rem;">
             <i class="fas fa-boxes" style="font-size:3rem; margin-bottom:1rem; display:block; opacity:.4;"></i>
             No supplies yet. <a href="#" onclick="openAddSupplyModal();return false;">Add one now</a>
         </div>
-    <?php endif; ?>
+        <?php endif; ?>
+    </div>
 </div>
 
-<!-- ══ Categories management view ══ -->
+<!-- ══ CATEGORIES VIEW ══ -->
 <div id="categoriesView" style="display:none;">
-    <?php if (!empty($categories)): ?>
-        <div class="cat-grid">
-            <?php foreach ($categories as $cat):
-                $cnt = array_reduce($supplies, function($c,$s) use ($cat){ return $c + ($s['category_id']==$cat['id']?1:0); }, 0);
-            ?>
-            <div class="cat-card">
-                <div class="cat-icon" style="background:<?php echo htmlspecialchars($cat['color_hex']); ?>;">
-                    <i class="<?php echo htmlspecialchars($cat['icon_class']); ?>"></i>
-                </div>
-                <h4><?php echo htmlspecialchars($cat['category_name']); ?></h4>
-                <?php if (!empty($cat['description'])): ?>
-                    <p><?php echo htmlspecialchars(substr($cat['description'],0,80)); ?></p>
-                <?php endif; ?>
-                <small style="color:var(--text-light); font-size:.73rem; font-weight:600;">
-                    <i class="fas fa-boxes"></i> <?php echo $cnt; ?> supplies
-                    &nbsp;|&nbsp;
-                    <span style="color:<?php echo $cat['is_active'] ? '#28A745' : '#6C757D'; ?>;">
-                        <?php echo $cat['is_active'] ? 'Active' : 'Inactive'; ?>
-                    </span>
-                </small>
-                <div class="cat-card-footer">
-                    <button class="btn-edit" onclick="editCategory(<?php echo $cat['id']; ?>)" title="Edit"><i class="fas fa-edit"></i></button>
-                    <button class="btn-delete" onclick="openCatDeleteConfirm(<?php echo $cat['id']; ?>,'<?php echo addslashes(htmlspecialchars($cat['category_name'])); ?>')" title="Delete"><i class="fas fa-trash"></i></button>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-    <?php else: ?>
+    <div class="admin-card">
+        <?php if (!empty($categories)): ?>
+        <table class="admin-table" id="categoriesTable">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th>Supplies</th>
+                    <th>Order</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($categories as $cat):
+                    $cnt = array_reduce($supplies, function($c,$s) use ($cat){ return $c + ($s['category_id']==$cat['id']?1:0); }, 0);
+                ?>
+                <tr>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:.65rem;">
+                            <div style="width:36px; height:36px; border-radius:8px; flex-shrink:0;
+                                        background:<?php echo htmlspecialchars($cat['color_hex']); ?>;
+                                        display:flex; align-items:center; justify-content:center;
+                                        color:#fff; font-size:.9rem;">
+                                <i class="<?php echo htmlspecialchars($cat['icon_class']); ?>"></i>
+                            </div>
+                            <span style="font-weight:700; font-size:.9rem;"><?php echo htmlspecialchars($cat['category_name']); ?></span>
+                        </div>
+                    </td>
+                    <td style="font-size:.83rem; color:var(--text-light); max-width:240px;">
+                        <?php echo !empty($cat['description']) ? htmlspecialchars(substr($cat['description'],0,80)).'…' : '<span style="opacity:.4;">—</span>'; ?>
+                    </td>
+                    <td style="text-align:center;">
+                        <span class="badge" style="background-color:var(--primary-color);"><?php echo $cnt; ?></span>
+                    </td>
+                    <td style="font-size:.85rem; text-align:center;"><?php echo $cat['sort_order']; ?></td>
+                    <td>
+                        <span class="badge" style="background-color:<?php echo $cat['is_active'] ? '#28A745' : '#6C757D'; ?>;">
+                            <?php echo $cat['is_active'] ? 'Active' : 'Inactive'; ?>
+                        </span>
+                    </td>
+                    <td>
+                        <div class="admin-actions">
+                            <button class="btn-edit" onclick="editCategory(<?php echo $cat['id']; ?>)" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-delete" onclick="openCatDeleteConfirm(<?php echo $cat['id']; ?>,'<?php echo addslashes(htmlspecialchars($cat['category_name'])); ?>')" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        <?php else: ?>
         <div style="text-align:center; color:var(--text-light); padding:3rem;">
             <i class="fas fa-folder-open" style="font-size:3rem; margin-bottom:1rem; display:block; opacity:.4;"></i>
             No categories yet. <a href="#" onclick="openAddCategoryModal();return false;">Add one now</a>
         </div>
-    <?php endif; ?>
+        <?php endif; ?>
+    </div>
 </div>
 
 <!-- ══ ADD / EDIT SUPPLY MODAL ══ -->
@@ -373,7 +377,7 @@ displayAlert();
 
             <div class="modal-footer">
                 <button type="button" class="btn-secondary-main" style="background:#6C757D;color:#fff;border:none;" onclick="closeSupplyModal()">Cancel</button>
-                <button type="submit" class="btn-add">Save Supply</button>
+                <button type="submit" class="btn-add" id="supplySubmitBtn">Save Supply</button>
             </div>
         </form>
     </div>
@@ -408,7 +412,8 @@ displayAlert();
                 <div class="form-group">
                     <label for="catColor">Accent Color</label>
                     <div style="display:flex; gap:.5rem; align-items:center;">
-                        <input type="color" id="catColor" name="color_hex" value="#1565C0" style="width:44px;height:38px;padding:2px;border:1.5px solid var(--border-color);border-radius:6px;cursor:pointer;">
+                        <input type="color" id="catColor" name="color_hex" value="#1565C0"
+                               style="width:44px;height:38px;padding:2px;border:1.5px solid var(--border-color);border-radius:6px;cursor:pointer;">
                         <input type="text" id="catColorText" class="form-control" value="#1565C0" maxlength="7" placeholder="#1565C0"
                                oninput="document.getElementById('catColor').value=this.value"
                                style="flex:1;">
@@ -475,9 +480,7 @@ displayAlert();
 </div>
 
 <script>
-/* ════════════════════════
-   TABS
-════════════════════════ */
+/* ════════════════ TABS ════════════════ */
 function switchTab(btn, cat) {
     document.querySelectorAll('.sup-tab').forEach(function(t){ t.classList.remove('active'); });
     btn.classList.add('active');
@@ -493,39 +496,37 @@ function switchTab(btn, cat) {
     catView.style.display = 'none';
     supView.style.display = '';
 
-    var cards = document.querySelectorAll('#suppliesGrid .sup-card');
+    var rows = document.querySelectorAll('#suppliesTable tbody tr:not(#supNoResults)');
     var visible = 0;
-    cards.forEach(function(c) {
-        var show = (cat === 'all') || (c.getAttribute('data-cat') === String(cat));
-        c.style.display = show ? '' : 'none';
+    rows.forEach(function(r) {
+        var show = (cat === 'all') || (r.getAttribute('data-cat') === String(cat));
+        r.style.display = show ? '' : 'none';
         if (show) visible++;
     });
     document.getElementById('supNoResults').style.display = visible === 0 ? '' : 'none';
 }
 
-/* ════════════════════════
-   SEARCH
-════════════════════════ */
+/* ════════════════ SEARCH ════════════════ */
 function filterSupplies(q) {
     q = q.toLowerCase().trim();
-    var cards = document.querySelectorAll('#suppliesGrid .sup-card');
+    var rows = document.querySelectorAll('#suppliesTable tbody tr:not(#supNoResults)');
     var visible = 0;
-    cards.forEach(function(c) {
-        var matches = q === '' || (c.getAttribute('data-search') || '').includes(q);
-        c.style.display = matches ? '' : 'none';
+    rows.forEach(function(r) {
+        var matches = q === '' || (r.getAttribute('data-search') || '').includes(q);
+        r.style.display = matches ? '' : 'none';
         if (matches) visible++;
     });
     document.getElementById('supNoResults').style.display = visible === 0 ? '' : 'none';
 }
 
-/* ════════════════════════
-   SUPPLY MODAL
-════════════════════════ */
+/* ════════════════ SUPPLY MODAL ════════════════ */
 function openAddSupplyModal() {
     document.getElementById('supplyModalTitle').innerText = 'Add New Supply';
     document.getElementById('supplyForm').reset();
     document.getElementById('supplyId').value = '';
     document.getElementById('supImgPreview').innerHTML = '';
+    document.getElementById('supplySubmitBtn').disabled = false;
+    document.getElementById('supplySubmitBtn').innerHTML = 'Save Supply';
     document.getElementById('supplyModal').classList.add('active');
 }
 function closeSupplyModal() { document.getElementById('supplyModal').classList.remove('active'); }
@@ -560,6 +561,8 @@ function editSupply(id) {
             document.getElementById('supOrder').value           = s.sort_order;
             document.getElementById('supActive').checked        = s.is_active == 1;
             document.getElementById('supImgPreview').innerHTML  = '';
+            document.getElementById('supplySubmitBtn').disabled = false;
+            document.getElementById('supplySubmitBtn').innerHTML = 'Save Supply';
             if (s.image_path) {
                 var img = document.createElement('img');
                 img.src = '<?php echo UPLOADS_URL; ?>' + s.image_path;
@@ -572,29 +575,40 @@ function editSupply(id) {
 
 function submitSupplyForm(e) {
     e.preventDefault();
+    var btn = document.getElementById('supplySubmitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
+
     var fd = new FormData(document.getElementById('supplyForm'));
     fetch('../backend/save_supply.php', { method:'POST', body:fd })
         .then(function(r){ return r.json(); })
         .then(function(data) {
-            if (data.success) { window.location.href = 'dashboard.php?page=supplies'; }
-            else { alert('Error: ' + data.message); }
+            if (data.success) {
+                window.location.href = 'dashboard.php?page=supplies';
+            } else {
+                alert('Error: ' + data.message);
+                btn.disabled = false;
+                btn.innerHTML = 'Save Supply';
+            }
+        })
+        .catch(function(err) {
+            alert('Network error. Please try again.');
+            btn.disabled = false;
+            btn.innerHTML = 'Save Supply';
         });
 }
 
-/* ════════════════════════
-   CATEGORY MODAL
-════════════════════════ */
+/* ════════════════ CATEGORY MODAL ════════════════ */
 function openAddCategoryModal() {
     document.getElementById('categoryModalTitle').innerText = 'Add Category';
     document.getElementById('categoryForm').reset();
-    document.getElementById('categoryId').value = '';
-    document.getElementById('catColor').value     = '#1565C0';
-    document.getElementById('catColorText').value = '#1565C0';
+    document.getElementById('categoryId').value  = '';
+    document.getElementById('catColor').value    = '#1565C0';
+    document.getElementById('catColorText').value= '#1565C0';
     document.getElementById('categoryModal').classList.add('active');
 }
 function closeCategoryModal() { document.getElementById('categoryModal').classList.remove('active'); }
 
-// Sync color picker ↔ text input
 document.getElementById('catColor').addEventListener('input', function() {
     document.getElementById('catColorText').value = this.value;
 });
@@ -606,14 +620,14 @@ function editCategory(id) {
             if (!data.success) { alert('Could not load category.'); return; }
             var c = data.data;
             document.getElementById('categoryModalTitle').innerText = 'Edit Category';
-            document.getElementById('categoryId').value  = c.id;
-            document.getElementById('catName').value     = c.category_name;
-            document.getElementById('catDesc').value     = c.description || '';
-            document.getElementById('catIcon').value     = c.icon_class  || 'fas fa-boxes';
-            document.getElementById('catColor').value    = c.color_hex   || '#1565C0';
-            document.getElementById('catColorText').value= c.color_hex   || '#1565C0';
-            document.getElementById('catOrder').value    = c.sort_order;
-            document.getElementById('catActive').checked = c.is_active == 1;
+            document.getElementById('categoryId').value   = c.id;
+            document.getElementById('catName').value      = c.category_name;
+            document.getElementById('catDesc').value      = c.description || '';
+            document.getElementById('catIcon').value      = c.icon_class  || 'fas fa-boxes';
+            document.getElementById('catColor').value     = c.color_hex   || '#1565C0';
+            document.getElementById('catColorText').value = c.color_hex   || '#1565C0';
+            document.getElementById('catOrder').value     = c.sort_order;
+            document.getElementById('catActive').checked  = c.is_active == 1;
             document.getElementById('categoryModal').classList.add('active');
         });
 }
@@ -629,9 +643,7 @@ function submitCategoryForm(e) {
         });
 }
 
-/* ════════════════════════
-   DELETE CONFIRMS
-════════════════════════ */
+/* ════════════════ DELETE CONFIRMS ════════════════ */
 var _delSupId = null, _delCatId = null;
 
 function openSupplyDeleteConfirm(id, name) {
@@ -660,12 +672,10 @@ function executeCatDelete() {
     if (_delCatId) window.location.href = '../backend/delete_category.php?id=' + _delCatId;
 }
 
-// Close modals on overlay click / Escape
+// Close on overlay click / Escape
 ['supplyModal','categoryModal','supplyDeleteConfirm','catDeleteConfirm'].forEach(function(id) {
     document.getElementById(id).addEventListener('click', function(e) {
-        if (e.target === this) {
-            this.classList.remove('active');
-        }
+        if (e.target === this) this.classList.remove('active');
     });
 });
 document.addEventListener('keydown', function(e) {
