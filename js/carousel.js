@@ -535,25 +535,37 @@
             });
         });
 
-        /* ── Inquire button pre-fills contact modal ── */
+        /* ── Inquire button — opens contact modal with "Supply Services" pre-selected ── */
         window.openSupplyInquiry = function (supplyName) {
             var serviceSelect = document.getElementById('cf_service');
             if (serviceSelect) {
-                // Try to match exact option, or just set as text in a hidden note
-                var matched = false;
+                // Find and select the "Supply Services" option
+                var selected = false;
                 for (var i = 0; i < serviceSelect.options.length; i++) {
-                    if (serviceSelect.options[i].text.toLowerCase().includes('supply') ||
-                        serviceSelect.options[i].value.toLowerCase().includes('supply')) {
+                    var optText = serviceSelect.options[i].text.toLowerCase();
+                    var optVal  = serviceSelect.options[i].value.toLowerCase();
+                    if (optText.includes('supply') || optVal.includes('supply')) {
                         serviceSelect.value = serviceSelect.options[i].value;
-                        matched = true;
+                        selected = true;
                         break;
                     }
                 }
+                // Fallback: if no match found, add a temporary option
+                if (!selected) {
+                    var tempOpt = document.createElement('option');
+                    tempOpt.value = 'Supply Services';
+                    tempOpt.text  = 'Supply Services';
+                    tempOpt.setAttribute('data-temp', '1');
+                    serviceSelect.appendChild(tempOpt);
+                    serviceSelect.value = 'Supply Services';
+                }
             }
+
             var msgField = document.getElementById('cf_message');
             if (msgField && !msgField.value.trim()) {
                 msgField.value = 'I am interested in: ' + supplyName + '\n\nPlease send me availability and pricing information.';
             }
+
             // Open the contact modal
             var contactModal = document.getElementById('contactModal');
             if (contactModal) {

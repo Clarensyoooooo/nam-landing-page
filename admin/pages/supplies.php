@@ -3,8 +3,9 @@
 $cat_result = $conn->query("SELECT * FROM supply_categories ORDER BY sort_order ASC");
 $categories = $cat_result ? $cat_result->fetch_all(MYSQLI_ASSOC) : [];
 
+// ✅ Removed sc.color_hex and sc.icon_class — columns no longer exist
 $supplies_result = $conn->query("
-    SELECT s.*, sc.category_name, sc.color_hex, sc.icon_class
+    SELECT s.*, sc.category_name
     FROM supplies s
     LEFT JOIN supply_categories sc ON s.category_id = sc.id
     ORDER BY sc.sort_order ASC, s.sort_order ASC
@@ -13,6 +14,11 @@ $supplies = $supplies_result ? $supplies_result->fetch_all(MYSQLI_ASSOC) : [];
 
 displayAlert();
 ?>
+
+<script>
+// ✅ Absolute URL passed to JS so image previews always resolve correctly
+var UPLOADS_URL = '<?php echo UPLOADS_URL; ?>';
+</script>
 
 <style>
 /* ── Confirm Modal ── */
@@ -76,14 +82,10 @@ displayAlert();
     display: flex; align-items: center; justify-content: center;
     color: var(--border-color); font-size: 1.1rem; flex-shrink: 0;
 }
-.sup-name-cell {
-    display: flex; align-items: center; gap: .75rem;
-}
+.sup-name-cell { display: flex; align-items: center; gap: .75rem; }
 
 /* ── Category tab bar ── */
-.sup-tabs {
-    display: flex; gap: .45rem; flex-wrap: wrap; margin-bottom: 1.2rem;
-}
+.sup-tabs { display: flex; gap: .45rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
 .sup-tab {
     display: inline-flex; align-items: center; gap: .4rem;
     padding: .4rem .9rem; border-radius: 50px; font-size: .8rem;
@@ -117,9 +119,13 @@ displayAlert();
     border:none; outline:none; font-size:.84rem;
     color:#374151; width:100%; font-family:inherit; background:transparent;
 }
-
-/* ── No results row ── */
 #supNoResults { display: none; }
+
+/* ── Image preview in modal ── */
+#supImgPreview img {
+    width: 80px; height: 80px; object-fit: cover;
+    border-radius: 8px; border: 2px solid var(--primary-color); display: block;
+}
 </style>
 
 <!-- ══ Page toolbar ══ -->
@@ -154,7 +160,7 @@ displayAlert();
         $cnt = array_reduce($supplies, function($c,$s) use ($cat){ return $c + ($s['category_id']==$cat['id']?1:0); }, 0);
     ?>
     <button class="sup-tab" data-cat="<?php echo $cat['id']; ?>" onclick="switchTab(this,'<?php echo $cat['id']; ?>')">
-        <i class="<?php echo htmlspecialchars($cat['icon_class']); ?>"></i>
+        <i class="fas fa-tag"></i>
         <?php echo htmlspecialchars($cat['category_name']); ?>
         <span class="cbadge"><?php echo $cnt; ?></span>
     </button>
@@ -164,7 +170,7 @@ displayAlert();
     </button>
 </div>
 
-<!-- ══ SUPPLIES TABLE VIEW ══ -->
+<!-- ══ SUPPLIES TABLE ══ -->
 <div id="suppliesView">
     <div class="admin-card">
         <?php if (!empty($supplies)): ?>
@@ -173,7 +179,6 @@ displayAlert();
                 <tr>
                     <th>Supply</th>
                     <th>Category</th>
-                    <th>Unit</th>
                     <th>Description</th>
                     <th>Order</th>
                     <th>Status</th>
@@ -189,11 +194,11 @@ displayAlert();
                             <?php if (!empty($sup['image_path'])): ?>
                                 <img class="sup-thumb"
                                      src="<?php echo UPLOADS_URL . htmlspecialchars($sup['image_path']); ?>"
-                                     alt="<?php echo htmlspecialchars($sup['supply_name']); ?>">
+                                     alt="<?php echo htmlspecialchars($sup['supply_name']); ?>"
+                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <div class="sup-thumb-placeholder" style="display:none;"><i class="fas fa-box"></i></div>
                             <?php else: ?>
-                                <div class="sup-thumb-placeholder">
-                                    <i class="<?php echo htmlspecialchars($sup['icon_class'] ?? 'fas fa-box'); ?>"></i>
-                                </div>
+                                <div class="sup-thumb-placeholder"><i class="fas fa-box"></i></div>
                             <?php endif; ?>
                             <span style="font-weight:700; font-size:.9rem;">
                                 <?php echo htmlspecialchars($sup['supply_name']); ?>
@@ -202,17 +207,12 @@ displayAlert();
                     </td>
                     <td>
                         <span style="display:inline-flex; align-items:center; gap:.35rem;
-                                     background:<?php echo htmlspecialchars($sup['color_hex'] ?? '#1565C0'); ?>20;
-                                     color:<?php echo htmlspecialchars($sup['color_hex'] ?? '#1565C0'); ?>;
-                                     border:1px solid <?php echo htmlspecialchars($sup['color_hex'] ?? '#1565C0'); ?>40;
-                                     border-radius:50px; padding:.2rem .65rem;
-                                     font-size:.76rem; font-weight:800; white-space:nowrap;">
-                            <i class="<?php echo htmlspecialchars($sup['icon_class'] ?? 'fas fa-box'); ?>" style="font-size:.65rem;"></i>
+                                     background:#1565C020; color:#1565C0;
+                                     border:1px solid #1565C040; border-radius:50px;
+                                     padding:.2rem .65rem; font-size:.76rem; font-weight:800; white-space:nowrap;">
+                            <i class="fas fa-tag" style="font-size:.65rem;"></i>
                             <?php echo htmlspecialchars($sup['category_name'] ?? 'Uncategorized'); ?>
                         </span>
-                    </td>
-                    <td style="font-size:.85rem; color:var(--text-light);">
-                        <?php echo !empty($sup['unit']) ? htmlspecialchars($sup['unit']) : '—'; ?>
                     </td>
                     <td style="font-size:.83rem; color:var(--text-light); max-width:220px;">
                         <?php if (!empty($sup['description'])): ?>
@@ -229,18 +229,14 @@ displayAlert();
                     </td>
                     <td>
                         <div class="admin-actions">
-                            <button class="btn-edit" onclick="editSupply(<?php echo $sup['id']; ?>)" title="Edit">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn-delete" onclick="openSupplyDeleteConfirm(<?php echo $sup['id']; ?>,'<?php echo addslashes(htmlspecialchars($sup['supply_name'])); ?>')" title="Delete">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                            <button class="btn-edit" onclick="editSupply(<?php echo $sup['id']; ?>)"><i class="fas fa-edit"></i></button>
+                            <button class="btn-delete" onclick="openSupplyDeleteConfirm(<?php echo $sup['id']; ?>,'<?php echo addslashes(htmlspecialchars($sup['supply_name'])); ?>')"><i class="fas fa-trash"></i></button>
                         </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
                 <tr id="supNoResults">
-                    <td colspan="7" style="text-align:center; color:var(--text-light); padding:2.5rem;">
+                    <td colspan="6" style="text-align:center; color:var(--text-light); padding:2.5rem;">
                         <i class="fas fa-search" style="margin-right:.4rem;"></i> No supplies match your search.
                     </td>
                 </tr>
@@ -259,7 +255,7 @@ displayAlert();
 <div id="categoriesView" style="display:none;">
     <div class="admin-card">
         <?php if (!empty($categories)): ?>
-        <table class="admin-table" id="categoriesTable">
+        <table class="admin-table">
             <thead>
                 <tr>
                     <th>Category</th>
@@ -278,10 +274,9 @@ displayAlert();
                     <td>
                         <div style="display:flex; align-items:center; gap:.65rem;">
                             <div style="width:36px; height:36px; border-radius:8px; flex-shrink:0;
-                                        background:<?php echo htmlspecialchars($cat['color_hex']); ?>;
-                                        display:flex; align-items:center; justify-content:center;
-                                        color:#fff; font-size:.9rem;">
-                                <i class="<?php echo htmlspecialchars($cat['icon_class']); ?>"></i>
+                                        background:#1565C0; display:flex; align-items:center;
+                                        justify-content:center; color:#fff; font-size:.9rem;">
+                                <i class="fas fa-tag"></i>
                             </div>
                             <span style="font-weight:700; font-size:.9rem;"><?php echo htmlspecialchars($cat['category_name']); ?></span>
                         </div>
@@ -300,12 +295,8 @@ displayAlert();
                     </td>
                     <td>
                         <div class="admin-actions">
-                            <button class="btn-edit" onclick="editCategory(<?php echo $cat['id']; ?>)" title="Edit">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn-delete" onclick="openCatDeleteConfirm(<?php echo $cat['id']; ?>,'<?php echo addslashes(htmlspecialchars($cat['category_name'])); ?>')" title="Delete">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                            <button class="btn-edit" onclick="editCategory(<?php echo $cat['id']; ?>)"><i class="fas fa-edit"></i></button>
+                            <button class="btn-delete" onclick="openCatDeleteConfirm(<?php echo $cat['id']; ?>,'<?php echo addslashes(htmlspecialchars($cat['category_name'])); ?>')"><i class="fas fa-trash"></i></button>
                         </div>
                     </td>
                 </tr>
@@ -321,7 +312,7 @@ displayAlert();
     </div>
 </div>
 
-<!-- ══ ADD / EDIT SUPPLY MODAL ══ -->
+<!-- ══ SUPPLY MODAL ══ -->
 <div class="modal-overlay" id="supplyModal">
     <div class="modal-content" style="max-width:520px; max-height:90vh; overflow-y:auto;">
         <div class="modal-header">
@@ -330,7 +321,6 @@ displayAlert();
         </div>
         <form id="supplyForm" enctype="multipart/form-data" onsubmit="submitSupplyForm(event)">
             <input type="hidden" id="supplyId" name="supply_id" value="">
-
             <div class="form-group">
                 <label for="supCategory">Category <span style="color:#DC3545;">*</span></label>
                 <select id="supCategory" name="category_id" class="form-control" required>
@@ -340,41 +330,29 @@ displayAlert();
                     <?php endforeach; ?>
                 </select>
             </div>
-
             <div class="form-group">
                 <label for="supName">Supply Name <span style="color:#DC3545;">*</span></label>
                 <input type="text" id="supName" name="supply_name" class="form-control" required placeholder="e.g. Portland Cement 40kg">
             </div>
-
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
-                <div class="form-group">
-                    <label for="supUnit">Unit</label>
-                    <input type="text" id="supUnit" name="unit" class="form-control" placeholder="pcs, kg, m, box…">
-                </div>
-                <div class="form-group">
-                    <label for="supOrder">Sort Order</label>
-                    <input type="number" id="supOrder" name="sort_order" class="form-control" value="0" min="0">
-                </div>
+            <div class="form-group">
+                <label for="supOrder">Sort Order</label>
+                <input type="number" id="supOrder" name="sort_order" class="form-control" value="0" min="0">
             </div>
-
             <div class="form-group">
                 <label for="supDescription">Description</label>
                 <textarea id="supDescription" name="description" class="form-control" rows="3" placeholder="Brief product description…"></textarea>
             </div>
-
             <div class="form-group">
                 <label for="supImage">Image</label>
                 <input type="file" id="supImage" name="supply_image" class="form-control" accept="image/*" onchange="previewSupplyImg(this)">
                 <small style="color:var(--text-light);">JPG, PNG, WEBP — max 5MB</small>
                 <div id="supImgPreview" style="margin-top:.6rem;"></div>
             </div>
-
             <div class="form-group">
                 <label>
                     <input type="checkbox" id="supActive" name="is_active" value="1" checked> Active (visible on website)
                 </label>
             </div>
-
             <div class="modal-footer">
                 <button type="button" class="btn-secondary-main" style="background:#6C757D;color:#fff;border:none;" onclick="closeSupplyModal()">Cancel</button>
                 <button type="submit" class="btn-add" id="supplySubmitBtn">Save Supply</button>
@@ -383,7 +361,7 @@ displayAlert();
     </div>
 </div>
 
-<!-- ══ ADD / EDIT CATEGORY MODAL ══ -->
+<!-- ══ CATEGORY MODAL ══ -->
 <div class="modal-overlay" id="categoryModal">
     <div class="modal-content" style="max-width:480px;">
         <div class="modal-header">
@@ -392,47 +370,23 @@ displayAlert();
         </div>
         <form id="categoryForm" onsubmit="submitCategoryForm(event)">
             <input type="hidden" id="categoryId" name="category_id" value="">
-
             <div class="form-group">
                 <label for="catName">Category Name <span style="color:#DC3545;">*</span></label>
                 <input type="text" id="catName" name="category_name" class="form-control" required placeholder="e.g. Electrical Supplies">
             </div>
-
             <div class="form-group">
                 <label for="catDesc">Description</label>
                 <textarea id="catDesc" name="description" class="form-control" rows="2" placeholder="Brief category description…"></textarea>
             </div>
-
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
-                <div class="form-group">
-                    <label for="catIcon">Font Awesome Icon Class</label>
-                    <input type="text" id="catIcon" name="icon_class" class="form-control" value="fas fa-boxes" placeholder="fas fa-boxes">
-                    <small style="color:var(--text-light);">Browse at fontawesome.com</small>
-                </div>
-                <div class="form-group">
-                    <label for="catColor">Accent Color</label>
-                    <div style="display:flex; gap:.5rem; align-items:center;">
-                        <input type="color" id="catColor" name="color_hex" value="#1565C0"
-                               style="width:44px;height:38px;padding:2px;border:1.5px solid var(--border-color);border-radius:6px;cursor:pointer;">
-                        <input type="text" id="catColorText" class="form-control" value="#1565C0" maxlength="7" placeholder="#1565C0"
-                               oninput="document.getElementById('catColor').value=this.value"
-                               style="flex:1;">
-                    </div>
-                </div>
-            </div>
-
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
                 <div class="form-group">
                     <label for="catOrder">Sort Order</label>
                     <input type="number" id="catOrder" name="sort_order" class="form-control" value="0" min="0">
                 </div>
                 <div class="form-group" style="display:flex; align-items:flex-end; padding-bottom:.5rem;">
-                    <label>
-                        <input type="checkbox" id="catActive" name="is_active" value="1" checked> Active
-                    </label>
+                    <label><input type="checkbox" id="catActive" name="is_active" value="1" checked> Active</label>
                 </div>
             </div>
-
             <div class="modal-footer">
                 <button type="button" class="btn-secondary-main" style="background:#6C757D;color:#fff;border:none;" onclick="closeCategoryModal()">Cancel</button>
                 <button type="submit" class="btn-add">Save Category</button>
@@ -441,7 +395,7 @@ displayAlert();
     </div>
 </div>
 
-<!-- ══ DELETE CONFIRM — Supply ══ -->
+<!-- ══ DELETE CONFIRMS ══ -->
 <div class="confirm-modal-overlay" id="supplyDeleteConfirm">
     <div class="confirm-modal-box">
         <div class="confirm-modal-header">
@@ -458,7 +412,6 @@ displayAlert();
     </div>
 </div>
 
-<!-- ══ DELETE CONFIRM — Category ══ -->
 <div class="confirm-modal-overlay" id="catDeleteConfirm">
     <div class="confirm-modal-box">
         <div class="confirm-modal-header">
@@ -480,22 +433,14 @@ displayAlert();
 </div>
 
 <script>
-/* ════════════════ TABS ════════════════ */
+/* ── Tabs ── */
 function switchTab(btn, cat) {
     document.querySelectorAll('.sup-tab').forEach(function(t){ t.classList.remove('active'); });
     btn.classList.add('active');
-
     var supView = document.getElementById('suppliesView');
     var catView = document.getElementById('categoriesView');
-
-    if (cat === 'categories') {
-        supView.style.display = 'none';
-        catView.style.display = '';
-        return;
-    }
-    catView.style.display = 'none';
-    supView.style.display = '';
-
+    if (cat === 'categories') { supView.style.display = 'none'; catView.style.display = ''; return; }
+    catView.style.display = 'none'; supView.style.display = '';
     var rows = document.querySelectorAll('#suppliesTable tbody tr:not(#supNoResults)');
     var visible = 0;
     rows.forEach(function(r) {
@@ -506,7 +451,7 @@ function switchTab(btn, cat) {
     document.getElementById('supNoResults').style.display = visible === 0 ? '' : 'none';
 }
 
-/* ════════════════ SEARCH ════════════════ */
+/* ── Search ── */
 function filterSupplies(q) {
     q = q.toLowerCase().trim();
     var rows = document.querySelectorAll('#suppliesTable tbody tr:not(#supNoResults)');
@@ -519,7 +464,7 @@ function filterSupplies(q) {
     document.getElementById('supNoResults').style.display = visible === 0 ? '' : 'none';
 }
 
-/* ════════════════ SUPPLY MODAL ════════════════ */
+/* ── Supply modal ── */
 function openAddSupplyModal() {
     document.getElementById('supplyModalTitle').innerText = 'Add New Supply';
     document.getElementById('supplyForm').reset();
@@ -539,7 +484,6 @@ function previewSupplyImg(input) {
         reader.onload = function(e) {
             var img = document.createElement('img');
             img.src = e.target.result;
-            img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--primary-color);';
             preview.appendChild(img);
         };
         reader.readAsDataURL(input.files[0]);
@@ -552,23 +496,27 @@ function editSupply(id) {
         .then(function(data) {
             if (!data.success) { alert('Could not load supply.'); return; }
             var s = data.data;
-            document.getElementById('supplyModalTitle').innerText = 'Edit Supply';
-            document.getElementById('supplyId').value          = s.id;
-            document.getElementById('supCategory').value        = s.category_id;
-            document.getElementById('supName').value            = s.supply_name;
-            document.getElementById('supUnit').value            = s.unit || '';
-            document.getElementById('supDescription').value     = s.description || '';
-            document.getElementById('supOrder').value           = s.sort_order;
-            document.getElementById('supActive').checked        = s.is_active == 1;
-            document.getElementById('supImgPreview').innerHTML  = '';
-            document.getElementById('supplySubmitBtn').disabled = false;
-            document.getElementById('supplySubmitBtn').innerHTML = 'Save Supply';
+            document.getElementById('supplyModalTitle').innerText  = 'Edit Supply';
+            document.getElementById('supplyId').value              = s.id;
+            document.getElementById('supCategory').value           = s.category_id;
+            document.getElementById('supName').value               = s.supply_name;
+            document.getElementById('supDescription').value        = s.description || '';
+            document.getElementById('supOrder').value              = s.sort_order;
+            document.getElementById('supActive').checked           = s.is_active == 1;
+            document.getElementById('supplySubmitBtn').disabled    = false;
+            document.getElementById('supplySubmitBtn').innerHTML   = 'Save Supply';
+
+            // ✅ Image preview — UPLOADS_URL is an absolute URL so it always works
+            var preview = document.getElementById('supImgPreview');
+            preview.innerHTML = '';
             if (s.image_path) {
                 var img = document.createElement('img');
-                img.src = '<?php echo UPLOADS_URL; ?>' + s.image_path;
-                img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--primary-color);';
-                document.getElementById('supImgPreview').appendChild(img);
+                img.src = UPLOADS_URL + s.image_path;
+                img.alt = s.supply_name;
+                img.onerror = function() { preview.innerHTML = ''; };
+                preview.appendChild(img);
             }
+
             document.getElementById('supplyModal').classList.add('active');
         });
 }
@@ -578,40 +526,23 @@ function submitSupplyForm(e) {
     var btn = document.getElementById('supplySubmitBtn');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
-
-    var fd = new FormData(document.getElementById('supplyForm'));
-    fetch('../backend/save_supply.php', { method:'POST', body:fd })
+    fetch('../backend/save_supply.php', { method:'POST', body: new FormData(document.getElementById('supplyForm')) })
         .then(function(r){ return r.json(); })
         .then(function(data) {
-            if (data.success) {
-                window.location.href = 'dashboard.php?page=supplies';
-            } else {
-                alert('Error: ' + data.message);
-                btn.disabled = false;
-                btn.innerHTML = 'Save Supply';
-            }
+            if (data.success) { window.location.href = 'dashboard.php?page=supplies'; }
+            else { alert('Error: ' + data.message); btn.disabled = false; btn.innerHTML = 'Save Supply'; }
         })
-        .catch(function(err) {
-            alert('Network error. Please try again.');
-            btn.disabled = false;
-            btn.innerHTML = 'Save Supply';
-        });
+        .catch(function() { alert('Network error.'); btn.disabled = false; btn.innerHTML = 'Save Supply'; });
 }
 
-/* ════════════════ CATEGORY MODAL ════════════════ */
+/* ── Category modal ── */
 function openAddCategoryModal() {
     document.getElementById('categoryModalTitle').innerText = 'Add Category';
     document.getElementById('categoryForm').reset();
-    document.getElementById('categoryId').value  = '';
-    document.getElementById('catColor').value    = '#1565C0';
-    document.getElementById('catColorText').value= '#1565C0';
+    document.getElementById('categoryId').value = '';
     document.getElementById('categoryModal').classList.add('active');
 }
 function closeCategoryModal() { document.getElementById('categoryModal').classList.remove('active'); }
-
-document.getElementById('catColor').addEventListener('input', function() {
-    document.getElementById('catColorText').value = this.value;
-});
 
 function editCategory(id) {
     fetch('../backend/get_category.php?id=' + id)
@@ -620,22 +551,18 @@ function editCategory(id) {
             if (!data.success) { alert('Could not load category.'); return; }
             var c = data.data;
             document.getElementById('categoryModalTitle').innerText = 'Edit Category';
-            document.getElementById('categoryId').value   = c.id;
-            document.getElementById('catName').value      = c.category_name;
-            document.getElementById('catDesc').value      = c.description || '';
-            document.getElementById('catIcon').value      = c.icon_class  || 'fas fa-boxes';
-            document.getElementById('catColor').value     = c.color_hex   || '#1565C0';
-            document.getElementById('catColorText').value = c.color_hex   || '#1565C0';
-            document.getElementById('catOrder').value     = c.sort_order;
-            document.getElementById('catActive').checked  = c.is_active == 1;
+            document.getElementById('categoryId').value  = c.id;
+            document.getElementById('catName').value     = c.category_name;
+            document.getElementById('catDesc').value     = c.description || '';
+            document.getElementById('catOrder').value    = c.sort_order;
+            document.getElementById('catActive').checked = c.is_active == 1;
             document.getElementById('categoryModal').classList.add('active');
         });
 }
 
 function submitCategoryForm(e) {
     e.preventDefault();
-    var fd = new FormData(document.getElementById('categoryForm'));
-    fetch('../backend/save_category.php', { method:'POST', body:fd })
+    fetch('../backend/save_category.php', { method:'POST', body: new FormData(document.getElementById('categoryForm')) })
         .then(function(r){ return r.json(); })
         .then(function(data) {
             if (data.success) { window.location.href = 'dashboard.php?page=supplies'; }
@@ -643,46 +570,21 @@ function submitCategoryForm(e) {
         });
 }
 
-/* ════════════════ DELETE CONFIRMS ════════════════ */
+/* ── Delete confirms ── */
 var _delSupId = null, _delCatId = null;
 
-function openSupplyDeleteConfirm(id, name) {
-    _delSupId = id;
-    document.getElementById('delSupName').textContent = '"' + name + '"';
-    document.getElementById('supplyDeleteConfirm').classList.add('active');
-}
-function closeSupplyDeleteConfirm() {
-    document.getElementById('supplyDeleteConfirm').classList.remove('active');
-    _delSupId = null;
-}
-function executeSupplyDelete() {
-    if (_delSupId) window.location.href = '../backend/delete_supply.php?id=' + _delSupId;
-}
+function openSupplyDeleteConfirm(id, name) { _delSupId = id; document.getElementById('delSupName').textContent = '"' + name + '"'; document.getElementById('supplyDeleteConfirm').classList.add('active'); }
+function closeSupplyDeleteConfirm() { document.getElementById('supplyDeleteConfirm').classList.remove('active'); _delSupId = null; }
+function executeSupplyDelete() { if (_delSupId) window.location.href = '../backend/delete_supply.php?id=' + _delSupId; }
 
-function openCatDeleteConfirm(id, name) {
-    _delCatId = id;
-    document.getElementById('delCatName').textContent = '"' + name + '"';
-    document.getElementById('catDeleteConfirm').classList.add('active');
-}
-function closeCatDeleteConfirm() {
-    document.getElementById('catDeleteConfirm').classList.remove('active');
-    _delCatId = null;
-}
-function executeCatDelete() {
-    if (_delCatId) window.location.href = '../backend/delete_category.php?id=' + _delCatId;
-}
+function openCatDeleteConfirm(id, name) { _delCatId = id; document.getElementById('delCatName').textContent = '"' + name + '"'; document.getElementById('catDeleteConfirm').classList.add('active'); }
+function closeCatDeleteConfirm() { document.getElementById('catDeleteConfirm').classList.remove('active'); _delCatId = null; }
+function executeCatDelete() { if (_delCatId) window.location.href = '../backend/delete_category.php?id=' + _delCatId; }
 
-// Close on overlay click / Escape
 ['supplyModal','categoryModal','supplyDeleteConfirm','catDeleteConfirm'].forEach(function(id) {
-    document.getElementById(id).addEventListener('click', function(e) {
-        if (e.target === this) this.classList.remove('active');
-    });
+    document.getElementById(id).addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
 });
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        ['supplyModal','categoryModal','supplyDeleteConfirm','catDeleteConfirm'].forEach(function(id) {
-            document.getElementById(id).classList.remove('active');
-        });
-    }
+    if (e.key === 'Escape') ['supplyModal','categoryModal','supplyDeleteConfirm','catDeleteConfirm'].forEach(function(id) { document.getElementById(id).classList.remove('active'); });
 });
 </script>

@@ -15,7 +15,6 @@ try {
     $category_id = intval($_POST['category_id'] ?? 0);
     $supply_name = sanitize($_POST['supply_name'] ?? '');
     $description = sanitize($_POST['description'] ?? '');
-    $unit        = sanitize($_POST['unit'] ?? '');
     $sort_order  = intval($_POST['sort_order'] ?? 0);
     $is_active   = isset($_POST['is_active']) ? 1 : 0;
     $image_path  = null;
@@ -37,7 +36,6 @@ try {
         if (!$upload_result['success']) throw new Exception($upload_result['error']);
         $image_path = 'supplies/' . $upload_result['filename'];
     } elseif (isset($_FILES['supply_image']) && $_FILES['supply_image']['error'] !== UPLOAD_ERR_NO_FILE && $_FILES['supply_image']['error'] !== UPLOAD_ERR_OK) {
-        // A file was attempted but had an upload error
         $upload_errors = [
             UPLOAD_ERR_INI_SIZE   => 'File exceeds server upload limit (upload_max_filesize).',
             UPLOAD_ERR_FORM_SIZE  => 'File exceeds form upload limit.',
@@ -63,10 +61,10 @@ try {
         }
 
         $stmt = $conn->prepare(
-            "UPDATE supplies SET category_id=?, supply_name=?, description=?, unit=?, image_path=?, sort_order=?, is_active=?, updated_at=NOW() WHERE id=?"
+            "UPDATE supplies SET category_id=?, supply_name=?, description=?, image_path=?, sort_order=?, is_active=?, updated_at=NOW() WHERE id=?"
         );
         if (!$stmt) throw new Exception('Prepare failed: ' . $conn->error);
-        $stmt->bind_param("isssssii", $category_id, $supply_name, $description, $unit, $image_path, $sort_order, $is_active, $supply_id);
+        $stmt->bind_param("issssii", $category_id, $supply_name, $description, $image_path, $sort_order, $is_active, $supply_id);
 
         if ($stmt->execute()) {
             $response['success'] = true;
@@ -79,10 +77,10 @@ try {
     } else {
         // INSERT
         $stmt = $conn->prepare(
-            "INSERT INTO supplies (category_id, supply_name, description, unit, image_path, sort_order, is_active) VALUES (?,?,?,?,?,?,?)"
+            "INSERT INTO supplies (category_id, supply_name, description, image_path, sort_order, is_active) VALUES (?,?,?,?,?,?)"
         );
         if (!$stmt) throw new Exception('Prepare failed: ' . $conn->error);
-        $stmt->bind_param("issssii", $category_id, $supply_name, $description, $unit, $image_path, $sort_order, $is_active);
+        $stmt->bind_param("isssii", $category_id, $supply_name, $description, $image_path, $sort_order, $is_active);
 
         if ($stmt->execute()) {
             $response['success'] = true;
@@ -97,6 +95,6 @@ try {
     $response['message'] = $e->getMessage();
 }
 
-// Discard any stray output (PHP warnings etc.) so only clean JSON is sent
+// Discard any stray output so only clean JSON is sent
 ob_end_clean();
 echo json_encode($response);
