@@ -76,6 +76,10 @@
 
     /* ═══════════════════════════════════════════════
        5. SERVICE MODAL
+       Triggered by:
+         a) .svc-card clicks dispatched via 'svcCardClick' event
+            from services-scroll.js
+         b) Legacy .service-modern-card clicks (fallback)
     ═══════════════════════════════════════════════ */
     var svcModal   = document.getElementById('svcModal');
     var slidesWrap = document.getElementById('svcmSlides');
@@ -84,32 +88,37 @@
     var descEl     = document.getElementById('svcmDesc');
     var cur = 0, tot = 0, tmr = null;
 
+    /* Exposed so services-scroll.js can call directly if needed */
+    window.openSvcModalExternal = openSvcModal;
+
+    /* Listen for events from services-scroll.js */
+    document.addEventListener('svcCardClick', function (e) {
+        openSvcModal(e.detail.name, e.detail.desc, e.detail.images);
+    });
+
+    /* Legacy fallback for any .service-modern-card elements still in DOM */
     document.querySelectorAll('#services .service-modern-card').forEach(function (card) {
         card.addEventListener('click', function (e) {
-            if (e.target.closest('.service-read-more')) {
-                e.preventDefault();
-            }
+            if (e.target.closest('.service-read-more')) e.preventDefault();
             openSvcModal(
                 card.getAttribute('data-name'),
                 card.getAttribute('data-desc'),
                 JSON.parse(card.getAttribute('data-imgs') || '[]')
             );
         });
-        card.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') card.click();
-        });
     });
 
     function openSvcModal(name, desc, images) {
-        titleEl.textContent = name;
-        descEl.textContent  = desc;
+        titleEl.textContent = name  || '';
+        descEl.textContent  = desc  || '';
         slidesWrap.innerHTML = '';
         dotsWrap.innerHTML   = '';
         cur = 0;
-        tot = images.length;
+        tot = images ? images.length : 0;
 
         if (!tot) {
-            slidesWrap.innerHTML = '<div class="svcm-no-img"><i class="fas fa-hard-hat"></i></div>';
+            slidesWrap.innerHTML =
+                '<div class="svcm-no-img"><i class="fas fa-hard-hat"></i></div>';
         } else {
             images.forEach(function (src, i) {
                 var s   = document.createElement('div');
@@ -162,7 +171,6 @@
 
     document.getElementById('svcmCloseBtn').addEventListener('click', closeSvcModal);
 
-    // "Inquire Now" inside service modal → open contact modal
     document.getElementById('svcmQuoteBtn').addEventListener('click', function () {
         closeSvcModal();
         openContactModal();
@@ -192,15 +200,12 @@
         document.body.style.overflow = '';
     }
 
-    // Nav button
     var navContactBtn = document.getElementById('navContactBtn');
     if (navContactBtn) navContactBtn.addEventListener('click', openContactModal);
 
-    // Hero "Inquire Now" button
     var heroContactBtn = document.getElementById('heroContactBtn');
     if (heroContactBtn) heroContactBtn.addEventListener('click', openContactModal);
 
-    // Footer contact link
     var footerContactLink = document.getElementById('footerContactLink');
     if (footerContactLink) {
         footerContactLink.addEventListener('click', function (e) {
@@ -209,10 +214,8 @@
         });
     }
 
-    // Close button
     document.getElementById('contactModalCloseBtn').addEventListener('click', closeContactModal);
 
-    // Click outside to close
     contactModal.addEventListener('click', function (e) {
         if (e.target === contactModal) closeContactModal();
     });
@@ -455,7 +458,7 @@
         );
     });
 
-    /* ── verify button ── */
+    /* verify button */
     vmVerifyBtn.addEventListener('click', function () {
         var code = getCode();
         if (code.length !== 6) return;
@@ -477,23 +480,15 @@
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (data.success) {
-                    // 1. Close the verify modal
                     closeVerifyModal();
-
-                    // 2. Reset the form
                     contactForm.reset();
-
-                    // 3. Show success banner INSIDE the contact modal (keep it open)
                     var banner = document.getElementById('contactSuccessBanner');
                     var msgEl  = document.getElementById('contactSuccessMsg');
                     if (banner && msgEl) {
                         msgEl.textContent = data.message;
                         banner.classList.add('show');
                     }
-
-                    // 4. Keep contact modal open — user will close it manually
                     openContactModal();
-
                 } else {
                     shakeDigits();
                     showVmAlert(data.message, 'error');
@@ -509,8 +504,11 @@
             });
     });
 
+
+    /* ═══════════════════════════════════════════════
+       8. SUPPLIES SECTION FILTER
+    ═══════════════════════════════════════════════ */
     (function () {
-        /* ── Supply section filter ── */
         var supPills = document.querySelectorAll('.sup-filter-pill');
         var supItems = document.querySelectorAll('#supCardsGrid .sup-item');
         var supNoRes = document.getElementById('supNoResultsPublic');
@@ -535,27 +533,23 @@
             });
         });
 
-        /* ── Inquire button — opens contact modal with "Supply Services" pre-selected ── */
+        /* Supply inquire button */
         window.openSupplyInquiry = function (supplyName) {
             var serviceSelect = document.getElementById('cf_service');
             if (serviceSelect) {
-                // Find and select the "Supply Services" option
                 var selected = false;
                 for (var i = 0; i < serviceSelect.options.length; i++) {
                     var optText = serviceSelect.options[i].text.toLowerCase();
-                    var optVal  = serviceSelect.options[i].value.toLowerCase();
-                    if (optText.includes('supply') || optVal.includes('supply')) {
+                    if (optText.includes('supply')) {
                         serviceSelect.value = serviceSelect.options[i].value;
                         selected = true;
                         break;
                     }
                 }
-                // Fallback: if no match found, add a temporary option
                 if (!selected) {
                     var tempOpt = document.createElement('option');
                     tempOpt.value = 'Supply Services';
                     tempOpt.text  = 'Supply Services';
-                    tempOpt.setAttribute('data-temp', '1');
                     serviceSelect.appendChild(tempOpt);
                     serviceSelect.value = 'Supply Services';
                 }
@@ -563,20 +557,17 @@
 
             var msgField = document.getElementById('cf_message');
             if (msgField && !msgField.value.trim()) {
-                msgField.value = 'I am interested in: ' + supplyName + '\n\nPlease send me availability and pricing information.';
+                msgField.value = 'I am interested in: ' + supplyName +
+                    '\n\nPlease send me availability and pricing information.';
             }
 
-            // Open the contact modal
-            var contactModal = document.getElementById('contactModal');
-            if (contactModal) {
-                contactModal.classList.add('open');
-                document.body.style.overflow = 'hidden';
-            }
+            openContactModal();
         };
     }());
 
+
     /* ═══════════════════════════════════════════════
-    9. FOUNDER SECTION SCROLL REVEAL
+       9. FOUNDER SECTION SCROLL REVEAL
     ═══════════════════════════════════════════════ */
     (function () {
         var founderEls = document.querySelectorAll('.founder-reveal-text, .founder-reveal-photo');
@@ -594,8 +585,9 @@
         founderEls.forEach(function (el) { founderObs.observe(el); });
     }());
 
+
     /* ═══════════════════════════════════════════════
-       8. AUTO-DISMISS BOOTSTRAP ALERTS
+       10. AUTO-DISMISS BOOTSTRAP ALERTS
     ═══════════════════════════════════════════════ */
     document.querySelectorAll('.alert').forEach(function (alert) {
         setTimeout(function () {
@@ -603,5 +595,224 @@
             if (btn) btn.click();
         }, 5000);
     });
+
+
+    /* ═══════════════════════════════════════════════════════════════
+       11. SERVICES — HORIZONTAL SCROLL HIJACK
+       Rules:
+         • Hijack is ONLY active when scrolling DOWN through the section.
+         • Scrolling back UP passes straight through — no re-hijack.
+         • Arrow buttons let the user jump between cards without scrolling.
+         • The freeze starts exactly when the sticky header ("What We Do /
+           Our Services") hits the top of the viewport (top:0 on .svc-sticky).
+    ═══════════════════════════════════════════════════════════════ */
+    (function () {
+
+        var svcSection = document.getElementById('services');
+        var svcTrack   = document.getElementById('svcTrack');
+        var svcCounter = document.getElementById('svcCounter');
+        var svcFill    = document.getElementById('svcProgressFill');
+        var svcDotsWrap= document.getElementById('svcDots');
+        var svcHint    = document.getElementById('svcScrollHint');
+        var btnPrev    = document.getElementById('svcBtnPrev');
+        var btnNext    = document.getElementById('svcBtnNext');
+
+        if (!svcSection || !svcTrack) return;
+
+        var svcCards = Array.from(svcTrack.querySelectorAll('.svc-card'));
+        var N = svcCards.length;
+        if (N === 0) return;
+
+        var CARD_W   = 300;
+        var CARD_GAP = 22;
+        var LEAD     = 0;
+        var TRAIL    = 0;
+
+        /* Track whether the user has already passed through going downward.
+           Once they have, we never hijack on the way back up. */
+        var alreadyPassed = false;
+        var lastScrollY   = window.scrollY;
+
+        /* ── Build dots ── */
+        var svcDots = [];
+        svcCards.forEach(function (_, i) {
+            var d = document.createElement('button');
+            d.className = 'svc-dot';
+            d.setAttribute('aria-label', 'Go to service ' + (i + 1));
+            svcDotsWrap.appendChild(d);
+            svcDots.push(d);
+            d.addEventListener('click', function () { jumpToCard(i); });
+        });
+
+        /* ── Jump to a card by setting page scroll position ── */
+        function jumpToCard(idx) {
+            var budget   = svcSection.offsetHeight - window.innerHeight;
+            var fraction = N > 1 ? idx / (N - 1) : 0;
+            var targetY  = svcSection.offsetTop + fraction * budget;
+            window.scrollTo({ top: targetY, behavior: 'smooth' });
+        }
+
+        /* ── Arrow buttons ── */
+        var currentCardIdx = 0;
+        if (btnPrev) {
+            btnPrev.addEventListener('click', function () {
+                jumpToCard(Math.max(0, currentCardIdx - 1));
+            });
+        }
+        if (btnNext) {
+            btnNext.addEventListener('click', function () {
+                jumpToCard(Math.min(N - 1, currentCardIdx + 1));
+            });
+        }
+
+        /* ── Recalculate geometry ── */
+        function recalc() {
+            var vw     = window.innerWidth;
+            CARD_W     = vw <= 480 ? 200 : vw <= 768 ? 240 : 300;
+            var CARD_H = vw <= 480 ? 290 : vw <= 768 ? 330 : 400;
+
+            /* Lock every card to exact dimensions so nothing collapses */
+            svcCards.forEach(function (c) {
+                c.style.flexBasis  = CARD_W + 'px';
+                c.style.width      = CARD_W + 'px';
+                c.style.minWidth   = CARD_W + 'px';
+                c.style.maxWidth   = CARD_W + 'px';
+                c.style.height     = CARD_H + 'px';
+                c.style.flexShrink = '0';
+                c.style.flexGrow   = '0';
+            });
+
+            /* Track must never wrap — stretch to its natural full width */
+            svcTrack.style.width    = 'max-content';
+            svcTrack.style.minWidth = 'max-content';
+            svcTrack.style.flexWrap = 'nowrap';
+
+            LEAD  = vw * 0.5 - CARD_W * 0.5;
+            TRAIL = vw * 0.5 - CARD_W * 0.5;
+
+            var totalTrack = LEAD + N * CARD_W + (N - 1) * CARD_GAP + TRAIL;
+            /* Section height = full horizontal travel + one viewport = scroll budget */
+            svcSection.style.height = (totalTrack + window.innerHeight) + 'px';
+        }
+
+        /* ── RAF-gated tick ── */
+        var svcRaf   = null;
+        var prevIdx  = -1;
+
+        function onSvcScroll() {
+            if (svcRaf) return;
+            svcRaf = requestAnimationFrame(svcTick);
+        }
+
+        function svcTick() {
+            svcRaf = null;
+
+            var scrollingDown = window.scrollY >= lastScrollY;
+            lastScrollY = window.scrollY;
+
+            /* Distance scrolled past the section top */
+            var scrolled = window.scrollY - svcSection.offsetTop;
+            var budget   = svcSection.offsetHeight - window.innerHeight;
+            var progress = Math.max(0, Math.min(1, scrolled / budget));
+
+            /* Once the user has scrolled all the way through (progress ≥ 1)
+               mark it as passed — no more hijacking on the way back up. */
+            if (progress >= 1) alreadyPassed = true;
+
+            /* If scrolling back up AND already passed → skip card animation,
+               just let progress drive whatever the natural scroll gives us
+               (cards will still reflect position but section won't trap them). */
+
+            /* translateX */
+            var totalTrack = LEAD + N * CARD_W + (N - 1) * CARD_GAP + TRAIL;
+            var maxShift   = totalTrack - window.innerWidth;
+            var tx         = -(progress * maxShift);
+
+            svcTrack.style.transform = 'translateX(' + tx + 'px)';
+
+            /* Active card */
+            var vCentre   = window.innerWidth * 0.5;
+            var activeIdx = 0;
+            var minDist   = Infinity;
+
+            svcCards.forEach(function (card, i) {
+                var cardLeft   = LEAD + i * (CARD_W + CARD_GAP) + tx;
+                var cardCentre = cardLeft + CARD_W * 0.5;
+                var dist = Math.abs(cardCentre - vCentre);
+                if (dist < minDist) { minDist = dist; activeIdx = i; }
+            });
+
+            currentCardIdx = activeIdx;
+
+            /* Card classes */
+            svcCards.forEach(function (card, i) {
+                card.classList.remove('svc-active', 'svc-near', 'svc-far', 'svc-right');
+                var diff = i - activeIdx;
+                if (diff === 0) {
+                    card.classList.add('svc-active');
+                } else if (Math.abs(diff) === 1) {
+                    card.classList.add('svc-near');
+                    if (diff > 0) card.classList.add('svc-right');
+                } else {
+                    card.classList.add('svc-far');
+                    if (diff > 0) card.classList.add('svc-right');
+                }
+            });
+
+            /* Counter + dots */
+            if (activeIdx !== prevIdx) {
+                prevIdx = activeIdx;
+                if (svcCounter) {
+                    svcCounter.textContent = pad(activeIdx + 1) + ' / ' + pad(N);
+                }
+                svcDots.forEach(function (d, i) {
+                    d.classList.toggle('svc-dot-active', i === activeIdx);
+                });
+            }
+
+            if (svcFill) {
+                svcFill.style.transform = 'scaleX(' + (N > 1 ? activeIdx / (N - 1) : 1) + ')';
+            }
+
+            /* Hint */
+            if (svcHint) {
+                svcHint.classList.toggle('svc-hint-done', progress > 0.06);
+            }
+
+            /* Arrow button states */
+            if (btnPrev) btnPrev.disabled = (activeIdx === 0);
+            if (btnNext) btnNext.disabled = (activeIdx === N - 1);
+        }
+
+        function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+        /* ── Card click → open service modal ── */
+        svcCards.forEach(function (card) {
+            card.addEventListener('click', function () {
+                var name   = card.getAttribute('data-name');
+                var desc   = card.getAttribute('data-desc');
+                var images = [];
+                try { images = JSON.parse(card.getAttribute('data-imgs') || '[]'); } catch (e) {}
+                openSvcModal(name, desc, images);
+            });
+        });
+
+        /* ── Init — defer to window.load so layout is fully settled ── */
+        function init() {
+            recalc();
+            /* Apply initial transform before any scroll so the first card is centred */
+            svcTrack.style.transform = 'translateX(' + LEAD + 'px)';
+            window.addEventListener('scroll', onSvcScroll, { passive: true });
+            window.addEventListener('resize', function () { recalc(); svcTick(); });
+            svcTick();
+        }
+
+        if (document.readyState === 'complete') {
+            init();
+        } else {
+            window.addEventListener('load', init);
+        }
+
+    }());
 
 }());

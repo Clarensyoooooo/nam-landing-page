@@ -16,7 +16,6 @@ foreach ($services as &$service) {
 unset($service);
 
 // ── Supplies data ──
-// ✅ Removed sc.color_hex and sc.icon_class — columns no longer exist
 $sup_cat_result = $conn->query("
     SELECT sc.id, sc.category_name, sc.description, sc.is_active, sc.sort_order,
            COUNT(s.id) AS supply_count
@@ -28,7 +27,6 @@ $sup_cat_result = $conn->query("
 ");
 $supply_categories = $sup_cat_result ? $sup_cat_result->fetch_all(MYSQLI_ASSOC) : [];
 
-// ✅ Removed sc.color_hex and sc.icon_class from SELECT
 $all_supplies_result = $conn->query("
     SELECT s.*, sc.category_name
     FROM supplies s
@@ -67,7 +65,6 @@ $all_supplies = $all_supplies_result ? $all_supplies_result->fetch_all(MYSQLI_AS
                         <li class="nav-item"><a class="nav-link" href="#home"     data-section="home">Home</a></li>
                         <li class="nav-item"><a class="nav-link" href="#about"    data-section="about">About</a></li>
                         <li class="nav-item"><a class="nav-link" href="#services" data-section="services">Services</a></li>
-                        
                         <li class="nav-item ms-lg-2">
                             <button class="btn-contact-nav" id="navContactBtn" type="button">
                                 <i class="fas fa-paper-plane"></i> Contact Us
@@ -273,55 +270,149 @@ $all_supplies = $all_supplies_result ? $all_supplies_result->fetch_all(MYSQLI_AS
         </div>
     </section>
 
-    <!-- ── Services ── -->
+    <!-- ══════════════════════════════════════════════
+         SERVICES — Horizontal scroll hijack
+    ══════════════════════════════════════════════ -->
     <section id="services">
-        <div class="container-lg">
-            <div class="section-title reveal">
-                <span class="section-tag">What We Do</span>
-                <h2>Our Services</h2>
-                <p>Comprehensive solutions tailored to your needs. Click any service to learn more.</p>
-            </div>
-            <div class="services-modern-grid">
-                <?php if (!empty($services)): ?>
-                    <?php foreach ($services as $idx => $sv):
-                        $first_img = !empty($sv['images']) 
-                            ? UPLOADS_URL . $sv['images'][0]['image_path'] 
-                            : '';
-                        $all_images = [];
-                        if (!empty($sv['images'])) {
-                            foreach ($sv['images'] as $img) {
-                                $all_images[] = UPLOADS_URL . $img['image_path'];
-                            }
-                        }
-                        $delay = ($idx % 3);
-                    ?>
-                    <div class="service-modern-card reveal reveal-delay-<?php echo $delay; ?>"
-                        data-name="<?php echo htmlspecialchars($sv['service_name']); ?>"
-                        data-desc="<?php echo htmlspecialchars(strip_tags($sv['description'])); ?>"
-                        data-imgs='<?php echo json_encode($all_images); ?>'>
-                        <div class="service-modern-image">
-                            <?php if ($first_img): ?>
-                                <img src="<?php echo $first_img; ?>" 
-                                    alt="<?php echo htmlspecialchars($sv['service_name']); ?>" 
-                                    loading="lazy">
-                            <?php else: ?>
-                                <div class="service-img-placeholder">
-                                    <i class="fas fa-hard-hat"></i>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                        <div class="service-modern-content">
-                            <h4><?php echo htmlspecialchars($sv['service_name']); ?></h4>
-                            <a href="javascript:void(0);" class="service-read-more">
-                                READ MORE <i class="fas fa-chevron-right"></i>
-                            </a>
-                        </div>
+
+        <!--
+            .svc-sticky uses top:72px so the section's "What We Do / Our Services"
+            header is the first thing that hits the top of the screen — freeze starts
+            exactly there, not mid-page.
+        -->
+        <div class="svc-sticky" id="svcSticky">
+
+            <!-- Section header -->
+            <div class="svc-header">
+                <div>
+                    <p class="svc-eyebrow">What We Do</p>
+                    <h2 class="svc-title">Our <span class="svc-title-accent">Services</span></h2>
+                    <p class="svc-subtitle">Comprehensive solutions tailored to your needs. Scroll to explore.</p>
+                </div>
+                <div class="svc-meta">
+                    <span class="svc-counter" id="svcCounter">01 / <?php echo str_pad(count($services) ?: 1, 2, '0', STR_PAD_LEFT); ?></span>
+                    <div class="svc-progress-bar">
+                        <div class="svc-progress-fill" id="svcProgressFill"></div>
                     </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
+                    <!-- Arrow navigation buttons -->
+                    <div class="svc-arrows">
+                        <button class="svc-arrow-btn" id="svcBtnPrev" aria-label="Previous service" disabled>
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button class="svc-arrow-btn" id="svcBtnNext" aria-label="Next service">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scrolling cards track -->
+            <div class="svc-viewport">
+                <div class="svc-track" id="svcTrack">
+
+                    <?php if (!empty($services)): ?>
+                        <?php foreach ($services as $idx => $sv):
+                            $first_img = !empty($sv['images'])
+                                ? UPLOADS_URL . $sv['images'][0]['image_path']
+                                : '';
+                            $all_images = [];
+                            if (!empty($sv['images'])) {
+                                foreach ($sv['images'] as $img) {
+                                    $all_images[] = UPLOADS_URL . $img['image_path'];
+                                }
+                            }
+                            $num = str_pad($idx + 1, 2, '0', STR_PAD_LEFT);
+                        ?>
+                        <div class="svc-card"
+                             data-index="<?php echo $idx; ?>"
+                             data-name="<?php echo htmlspecialchars($sv['service_name']); ?>"
+                             data-desc="<?php echo htmlspecialchars(strip_tags($sv['description'])); ?>"
+                             data-imgs='<?php echo json_encode($all_images); ?>'>
+
+                            <span class="svc-card-badge"><?php echo $num; ?></span>
+
+                            <div class="svc-card-img">
+                                <?php if ($first_img): ?>
+                                    <img src="<?php echo $first_img; ?>"
+                                         alt="<?php echo htmlspecialchars($sv['service_name']); ?>"
+                                         loading="lazy">
+                                <?php else: ?>
+                                    <div class="svc-card-placeholder">
+                                        <i class="fas fa-hard-hat"></i>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+
+                            <div class="svc-card-label">
+                                <span class="svc-card-tag">Service</span>
+                                <h3 class="svc-card-name"><?php echo htmlspecialchars($sv['service_name']); ?></h3>
+                                <span class="svc-card-cta">Learn more <i class="fas fa-arrow-right"></i></span>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <?php
+                        $placeholders = [
+                            ['General Construction','fa-hard-hat'],
+                            ['Custom Building','fa-building'],
+                            ['Outdoor Design','fa-tree'],
+                            ['Interior Remodeling','fa-couch'],
+                            ['Roofing Services','fa-tools'],
+                        ];
+                        foreach ($placeholders as $pi => $ph):
+                            $num = str_pad($pi+1,2,'0',STR_PAD_LEFT);
+                        ?>
+                        <div class="svc-card" data-index="<?php echo $pi; ?>">
+                            <span class="svc-card-badge"><?php echo $num; ?></span>
+                            <div class="svc-card-img">
+                                <div class="svc-card-placeholder">
+                                    <i class="fas <?php echo $ph[1]; ?>"></i>
+                                </div>
+                            </div>
+                            <div class="svc-card-label">
+                                <span class="svc-card-tag">Service</span>
+                                <h3 class="svc-card-name"><?php echo $ph[0]; ?></h3>
+                                <span class="svc-card-cta">Learn more <i class="fas fa-arrow-right"></i></span>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+
+                </div>
+            </div>
+
+            <!-- Navigation dots -->
+            <div class="svc-dots" id="svcDots"></div>
+
+            <!-- Scroll hint (fades once user starts scrolling) -->
+            <div class="svc-scroll-hint" id="svcScrollHint">
+                <span>Scroll to explore</span>
+                <div class="svc-hint-icon"><i class="fas fa-arrow-right"></i></div>
+            </div>
+
+        </div><!-- /svc-sticky -->
+    </section><!-- /services -->
+
+    <!-- ── Service Detail Modal ── -->
+    <div id="svcModal" role="dialog" aria-modal="true" aria-labelledby="svcmTitle">
+        <div class="svcm-box">
+            <div class="svcm-left">
+                <button class="svcm-close" id="svcmCloseBtn">&times;</button>
+                <div class="svcm-slides" id="svcmSlides"></div>
+                <div class="svcm-dots"   id="svcmDots"></div>
+            </div>
+            <div class="svcm-right">
+                <h2 class="svcm-title" id="svcmTitle"></h2>
+                <div class="svcm-bar"></div>
+                <p  class="svcm-desc"  id="svcmDesc"></p>
+                <div class="svcm-cta">
+                    <button type="button" id="svcmQuoteBtn" class="btn-primary-main" style="border:none; cursor:pointer;">
+                        <i class="fas fa-paper-plane"></i> Inquire Now
+                    </button>
+                </div>
             </div>
         </div>
-    </section>
+    </div>
 
     <!-- ── Supplies Section ── -->
     <section id="supplies">
@@ -333,8 +424,6 @@ $all_supplies = $all_supplies_result ? $all_supplies_result->fetch_all(MYSQLI_AS
             </div>
 
             <?php if (!empty($supply_categories)): ?>
-
-            <!-- Category filter pills -->
             <div class="sup-filter-bar reveal">
                 <button class="sup-filter-pill active" data-filter="all">
                     <i class="fas fa-layer-group"></i>
@@ -353,7 +442,6 @@ $all_supplies = $all_supplies_result ? $all_supplies_result->fetch_all(MYSQLI_AS
                 <?php endforeach; ?>
             </div>
 
-            <!-- Supply cards grid -->
             <div class="sup-cards-grid" id="supCardsGrid">
                 <?php if (!empty($all_supplies)): ?>
                     <?php foreach ($all_supplies as $i => $sup):
@@ -364,7 +452,6 @@ $all_supplies = $all_supplies_result ? $all_supplies_result->fetch_all(MYSQLI_AS
                         data-cat="<?php echo $sup['category_id']; ?>"
                         style="animation-delay:<?php echo $delay; ?>s;">
                         <div class="sup-item-inner">
-                            <!-- image / icon area -->
                             <div class="sup-item-img" style="--cat-bg:#1565C0;">
                                 <?php if ($imgSrc): ?>
                                     <img src="<?php echo $imgSrc; ?>"
@@ -379,20 +466,17 @@ $all_supplies = $all_supplies_result ? $all_supplies_result->fetch_all(MYSQLI_AS
                                         <i class="fas fa-box"></i>
                                     </div>
                                 <?php endif; ?>
-                                <!-- category badge -->
                                 <span class="sup-item-cat-badge" style="background:#1565C0;">
                                     <i class="fas fa-tag"></i>
                                     <?php echo htmlspecialchars($sup['category_name'] ?? ''); ?>
                                 </span>
                             </div>
-                            <!-- text -->
                             <div class="sup-item-body">
                                 <h4 class="sup-item-name"><?php echo htmlspecialchars($sup['supply_name']); ?></h4>
                                 <?php if (!empty($sup['description'])): ?>
                                     <p class="sup-item-desc"><?php echo htmlspecialchars($sup['description']); ?></p>
                                 <?php endif; ?>
                             </div>
-                            <!-- hover overlay cta -->
                             <div class="sup-item-hover">
                                 <button class="sup-inquire-btn" onclick="openSupplyInquiry('<?php echo htmlspecialchars(addslashes($sup['supply_name'])); ?>')">
                                     <i class="fas fa-paper-plane"></i> Inquire
@@ -413,7 +497,6 @@ $all_supplies = $all_supplies_result ? $all_supplies_result->fetch_all(MYSQLI_AS
                 <i class="fas fa-search" style="font-size:2.5rem; margin-bottom:.75rem; display:block; opacity:.4;"></i>
                 No supplies found in this category.
             </div>
-
             <?php else: ?>
                 <div style="text-align:center; color:var(--text-light); padding:2rem;">
                     Supply catalog is being updated. Please check back soon.
@@ -453,27 +536,6 @@ $all_supplies = $all_supplies_result ? $all_supplies_result->fetch_all(MYSQLI_AS
             </div>
         </div>
     </section>
-
-    <!-- ── Service Modal ── -->
-    <div id="svcModal" role="dialog" aria-modal="true" aria-labelledby="svcmTitle">
-        <div class="svcm-box">
-            <div class="svcm-left">
-                <button class="svcm-close" id="svcmCloseBtn">&times;</button>
-                <div class="svcm-slides" id="svcmSlides"></div>
-                <div class="svcm-dots"   id="svcmDots"></div>
-            </div>
-            <div class="svcm-right">
-                <h2 class="svcm-title" id="svcmTitle"></h2>
-                <div class="svcm-bar"></div>
-                <p  class="svcm-desc"  id="svcmDesc"></p>
-                <div class="svcm-cta">
-                    <button type="button" id="svcmQuoteBtn" class="btn-primary-main" style="border:none; cursor:pointer;">
-                        <i class="fas fa-paper-plane"></i> Inquire Now
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- ── Founder / CEO ── -->
     <section id="founder">
@@ -538,11 +600,10 @@ $all_supplies = $all_supplies_result ? $all_supplies_result->fetch_all(MYSQLI_AS
                         <div class="cm-info-item">
                             <div class="cm-info-icon"><i class="fas fa-map-marker-alt"></i></div>
                             <span>RNA Building Brgy. Santiago Malvar, Batangas</span>
-                            <span>Poblacion Brgy. 4 Tanauan City, Batangas</span>
                         </div>
                         <div class="cm-info-item">
                             <div class="cm-info-icon"><i class="fas fa-phone"></i></div>
-                            <span> 09230209877 / 09385314311 / 09568365775 / 09461704399</span>
+                            <span>09230209877 / 09385314311 / 09568365775 / 09461704399</span>
                         </div>
                         <div class="cm-info-item">
                             <div class="cm-info-icon"><i class="fas fa-envelope"></i></div>
@@ -669,8 +730,8 @@ $all_supplies = $all_supplies_result ? $all_supplies_result->fetch_all(MYSQLI_AS
                 </div>
                 <div class="footer-section">
                     <h3>Contact Us</h3>
-                    <div class="contact-info"><i class="fas fa-map-marker-alt"></i><span>RNA Building Brgy. Santiago Malvar, Batangas</span><span>Poblacion Brgy. 4, Tanauan City, Batangas</span></div>
-                    <div class="contact-info"><i class="fas fa-phone"></i><span>09230209877</span><span>/ 09385314311</span><span>/ 09568365775</span><span>/ 09461704399</span></div>
+                    <div class="contact-info"><i class="fas fa-map-marker-alt"></i><span>RNA Building Brgy. Santiago Malvar, Batangas</span></div>
+                    <div class="contact-info"><i class="fas fa-phone"></i><span>09230209877 / 09385314311 / 09568365775 / 09461704399</span></div>
                     <div class="contact-info"><i class="fas fa-envelope"></i><span>nam.nswt@myahoo.com</span></div>
                 </div>
             </div>
