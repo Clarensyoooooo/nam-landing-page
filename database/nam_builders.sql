@@ -108,18 +108,32 @@ CREATE TABLE IF NOT EXISTS supplies (
 CREATE INDEX idx_supplies_category ON supplies(category_id);
 CREATE INDEX idx_supplies_active   ON supplies(is_active);
 
+-- NAM Builders: Updates / Posts feature
+-- Run this to add the updates tables to the existing nam_builders database
+
 USE nam_builders;
 
+-- Main updates table
 CREATE TABLE IF NOT EXISTS updates (
     id          INT PRIMARY KEY AUTO_INCREMENT,
     title       VARCHAR(255)  NOT NULL,
     description TEXT          NOT NULL,
-    image_path  VARCHAR(255)  DEFAULT NULL,
+    image_path  VARCHAR(255)  DEFAULT NULL,   -- backward compat: first/cover image
     is_active   TINYINT(1)    DEFAULT 1,
     sort_order  INT           DEFAULT 0,
     created_at  TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Index for fast active-posts fetch
-CREATE INDEX idx_updates_active ON updates(is_active, sort_order);
+-- Multiple images per post (supports the slideshow in the modal)
+CREATE TABLE IF NOT EXISTS update_images (
+    id          INT PRIMARY KEY AUTO_INCREMENT,
+    update_id   INT           NOT NULL,
+    image_path  VARCHAR(255)  NOT NULL,
+    sort_order  INT           DEFAULT 0,
+    FOREIGN KEY (update_id) REFERENCES updates(id) ON DELETE CASCADE
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_updates_active     ON updates(is_active, sort_order);
+CREATE INDEX IF NOT EXISTS idx_update_images_post ON update_images(update_id, sort_order);

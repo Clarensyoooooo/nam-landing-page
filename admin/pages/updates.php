@@ -182,11 +182,14 @@ displayAlert();
             </div>
 
             <div class="form-group">
-                <label for="updImage">Cover Photo</label>
-                <input type="file" id="updImage" name="update_image" class="form-control"
-                       accept="image/*" onchange="previewUpdImg(this)">
-                <small style="color:var(--text-light);">JPG, PNG, WEBP — max 5MB. Recommended: 16:9 or square.</small>
-                <div id="updImgPreview"></div>
+                <label for="updImage">Photos <span style="color:var(--text-light);font-weight:400;">(select multiple)</span></label>
+                <input type="file" id="updImage" name="update_images[]" class="form-control"
+                       accept="image/*" multiple onchange="previewUpdImgs(this)">
+                <small style="color:var(--text-light);">JPG, PNG, WEBP — max 5MB each. First photo becomes the cover. You can add more photos when editing.</small>
+                <!-- New image previews -->
+                <div id="updImgPreview" style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.6rem;"></div>
+                <!-- Existing images (shown in edit mode) -->
+                <div id="updExistingImgs" style="margin-top:.8rem;"></div>
             </div>
 
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
@@ -257,19 +260,24 @@ function bindCharCount(inputId, countId, max) {
 bindCharCount('updTitle',       'updTitleCount', 120);
 bindCharCount('updDescription', 'updDescCount',  400);
 
-/* ── Image preview ── */
-function previewUpdImg(input) {
+/* ── Multi-image preview ── */
+function previewUpdImgs(input) {
     var preview = document.getElementById('updImgPreview');
     preview.innerHTML = '';
-    if (input.files && input.files[0]) {
+    if (!input.files || !input.files.length) return;
+    Array.from(input.files).forEach(function (file) {
         var reader = new FileReader();
         reader.onload = function (e) {
+            var wrap = document.createElement('div');
+            wrap.style.cssText = 'position:relative;display:inline-block;';
             var img = document.createElement('img');
             img.src = e.target.result;
-            preview.appendChild(img);
+            img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--primary-color);display:block;';
+            wrap.appendChild(img);
+            preview.appendChild(wrap);
         };
-        reader.readAsDataURL(input.files[0]);
-    }
+        reader.readAsDataURL(file);
+    });
 }
 
 /* ── Open / close modal ── */
@@ -278,6 +286,7 @@ function openAddUpdateModal() {
     document.getElementById('updateForm').reset();
     document.getElementById('updateId').value = '';
     document.getElementById('updImgPreview').innerHTML = '';
+    document.getElementById('updExistingImgs').innerHTML = '';
     document.getElementById('updSubmitBtn').disabled = false;
     document.getElementById('updSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Post';
     /* reset char counters */
@@ -306,14 +315,30 @@ function editUpdate(id) {
             document.getElementById('updActive').checked         = u.is_active == 1;
             document.getElementById('updSubmitBtn').disabled     = false;
             document.getElementById('updSubmitBtn').innerHTML    = '<i class="fas fa-save"></i> Save Post';
+            document.getElementById('updImgPreview').innerHTML   = '';
 
-            var preview = document.getElementById('updImgPreview');
-            preview.innerHTML = '';
-            if (u.image_path) {
-                var img = document.createElement('img');
-                img.src = '<?php echo UPLOADS_URL; ?>' + u.image_path;
-                img.onerror = function () { preview.innerHTML = ''; };
-                preview.appendChild(img);
+            /* Show existing images */
+            var existingWrap = document.getElementById('updExistingImgs');
+            existingWrap.innerHTML = '';
+            var imgs = u.all_images || (u.image_path ? ['<?php echo UPLOADS_URL; ?>' + u.image_path] : []);
+            if (imgs.length) {
+                var label = document.createElement('p');
+                label.style.cssText = 'font-size:.8rem;color:var(--text-light);margin:0 0 .4rem;font-weight:600;';
+                label.textContent = 'Current photos (' + imgs.length + '):';
+                existingWrap.appendChild(label);
+                var row = document.createElement('div');
+                row.style.cssText = 'display:flex;flex-wrap:wrap;gap:.5rem;';
+                imgs.forEach(function (src) {
+                    var thumb = document.createElement('img');
+                    thumb.src = src;
+                    thumb.style.cssText = 'width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border-color);';
+                    row.appendChild(thumb);
+                });
+                existingWrap.appendChild(row);
+                var hint = document.createElement('p');
+                hint.style.cssText = 'font-size:.75rem;color:var(--text-light);margin:.4rem 0 0;';
+                hint.textContent = 'New uploads will be added alongside existing photos.';
+                existingWrap.appendChild(hint);
             }
 
             /* trigger char counters */

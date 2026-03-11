@@ -43,6 +43,22 @@ $updates_result = $conn->query("
     ORDER BY sort_order ASC, created_at DESC
 ");
 $all_updates = $updates_result ? $updates_result->fetch_all(MYSQLI_ASSOC) : [];
+
+// Attach extra images for each update (for modal slideshow)
+foreach ($all_updates as &$upd) {
+    $uid = intval($upd['id']);
+    $imgs_result = $conn->query("SELECT image_path FROM update_images WHERE update_id = $uid ORDER BY sort_order ASC");
+    $extra = $imgs_result ? $imgs_result->fetch_all(MYSQLI_ASSOC) : [];
+    // Build full images array: cover first, then any extras not already included
+    $all_imgs = [];
+    if (!empty($upd['image_path'])) $all_imgs[] = UPLOADS_URL . $upd['image_path'];
+    foreach ($extra as $ei) {
+        $full = UPLOADS_URL . $ei['image_path'];
+        if (!in_array($full, $all_imgs)) $all_imgs[] = $full;
+    }
+    $upd['all_images'] = $all_imgs;
+}
+unset($upd);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -293,33 +309,27 @@ $all_updates = $updates_result ? $updates_result->fetch_all(MYSQLI_ASSOC) : [];
         -->
         <div class="svc-sticky" id="svcSticky">
 
-            <!-- Section header -->
+            <!-- Section header — centered, same style as About -->
             <div class="svc-header">
-                <div>
-                    <p class="svc-eyebrow">What We Do</p>
-                    <h2 class="svc-title">Our Services</h2>
-                    <p class="svc-subtitle">Comprehensive solutions tailored to your needs. Scroll to explore.</p>
-                </div>
+                <p class="svc-eyebrow">What We Do</p>
+                <h2 class="svc-title">Our <span class="svc-title-accent">Services</span></h2>
+                <p class="svc-subtitle">Comprehensive solutions tailored to your needs.</p>
                 <div class="svc-meta">
                     <span class="svc-counter" id="svcCounter">01 / <?php echo str_pad(count($services) ?: 1, 2, '0', STR_PAD_LEFT); ?></span>
                     <div class="svc-progress-bar">
                         <div class="svc-progress-fill" id="svcProgressFill"></div>
                     </div>
-                    <!-- Arrow navigation buttons -->
-                    <div class="svc-arrows">
-                        <button class="svc-arrow-btn" id="svcBtnPrev" aria-label="Previous service" disabled>
-                            <i class="fas fa-chevron-left"></i>
-                        </button>
-                        <button class="svc-arrow-btn" id="svcBtnNext" aria-label="Next service">
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
-                    </div>
                 </div>
             </div>
 
-            <!-- Scrolling cards track -->
-            <div class="svc-viewport">
-                <div class="svc-track" id="svcTrack">
+            <!-- Carousel: edge arrows + scrolling track -->
+            <div class="svc-carousel-wrap">
+                <button class="svc-arrow-btn" id="svcBtnPrev" aria-label="Previous service" disabled>
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+
+                <div class="svc-viewport">
+                    <div class="svc-track" id="svcTrack">
 
                     <?php if (!empty($services)): ?>
                         <?php foreach ($services as $idx => $sv):
@@ -389,17 +399,16 @@ $all_updates = $updates_result ? $updates_result->fetch_all(MYSQLI_ASSOC) : [];
                         <?php endforeach; ?>
                     <?php endif; ?>
 
-                </div>
-            </div>
+                </div><!-- /svc-track -->
+                </div><!-- /svc-viewport -->
+
+                <button class="svc-arrow-btn" id="svcBtnNext" aria-label="Next service">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div><!-- /svc-carousel-wrap -->
 
             <!-- Navigation dots -->
             <div class="svc-dots" id="svcDots"></div>
-
-            <!-- Scroll hint (fades once user starts scrolling) -->
-            <div class="svc-scroll-hint" id="svcScrollHint">
-                <span>Scroll to explore</span>
-                <div class="svc-hint-icon"><i class="fas fa-arrow-right"></i></div>
-            </div>
 
         </div><!-- /svc-sticky -->
     </section><!-- /services -->
@@ -555,11 +564,9 @@ $all_updates = $updates_result ? $updates_result->fetch_all(MYSQLI_ASSOC) : [];
         <div class="container-lg">
 
             <div class="upd-section-header reveal">
-                <div>
-                    <span class="section-tag">Latest News</span>
-                    <h2 class="upd-section-title">Updates &amp; <span class="upd-title-accent">Posts</span></h2>
-                    <p class="upd-section-sub">Stay informed on our latest projects, announcements, and milestones.</p>
-                </div>
+                <span class="section-tag">Latest News</span>
+                <h2 class="upd-section-title">Updates &amp; <span class="upd-title-accent">Posts</span></h2>
+                <p class="upd-section-sub">Stay informed on our latest projects, announcements, and milestones.</p>
                 <?php if (count($all_updates) > 3): ?>
                 <button class="upd-see-all-btn" id="updSeeAllBtn">
                     View All <i class="fas fa-arrow-right"></i>
@@ -570,39 +577,34 @@ $all_updates = $updates_result ? $updates_result->fetch_all(MYSQLI_ASSOC) : [];
             <?php if (!empty($all_updates)): ?>
             <div class="upd-grid" id="updGrid">
                 <?php foreach ($all_updates as $ui => $upd):
-                    $imgSrc = !empty($upd['image_path']) ? UPLOADS_URL . htmlspecialchars($upd['image_path']) : '';
-                    $date   = date('M j, Y', strtotime($upd['created_at']));
-                    $hidden = $ui >= 3 ? ' upd-card-hidden' : '';
+                    $coverSrc  = !empty($upd['image_path']) ? UPLOADS_URL . htmlspecialchars($upd['image_path']) : '';
+                    $allImgs   = !empty($upd['all_images']) ? $upd['all_images'] : ($coverSrc ? [$coverSrc] : []);
+                    $imgsJson  = htmlspecialchars(json_encode($allImgs), ENT_QUOTES);
+                    $date      = date('M j, Y', strtotime($upd['created_at']));
+                    $hidden    = $ui >= 3 ? ' upd-card-hidden' : '';
                 ?>
-                <article class="upd-card reveal reveal-delay-<?php echo ($ui % 3) + 1; ?><?php echo $hidden; ?>"
-                         data-id="<?php echo $upd['id']; ?>"
-                         data-title="<?php echo htmlspecialchars($upd['title']); ?>"
-                         data-desc="<?php echo htmlspecialchars($upd['description']); ?>"
-                         data-img="<?php echo $imgSrc; ?>"
+                <article class="upd-card<?php echo $hidden; ?>"
+                         tabindex="0" role="button"
+                         data-title="<?php echo htmlspecialchars($upd['title'], ENT_QUOTES); ?>"
+                         data-desc="<?php echo htmlspecialchars($upd['description'], ENT_QUOTES); ?>"
+                         data-imgs="<?php echo $imgsJson; ?>"
                          data-date="<?php echo $date; ?>">
-                    <div class="upd-card-inner">
-                        <div class="upd-card-img-wrap">
-                            <?php if ($imgSrc): ?>
-                                <img src="<?php echo $imgSrc; ?>"
-                                     alt="<?php echo htmlspecialchars($upd['title']); ?>"
-                                     loading="lazy">
-                            <?php else: ?>
-                                <div class="upd-img-placeholder">
-                                    <i class="fas fa-newspaper"></i>
-                                </div>
-                            <?php endif; ?>
-                            <div class="upd-date-badge">
-                                <i class="fas fa-calendar-alt"></i>
-                                <?php echo $date; ?>
-                            </div>
-                        </div>
-                        <div class="upd-card-body">
-                            <h3 class="upd-card-title"><?php echo htmlspecialchars($upd['title']); ?></h3>
-                            <p class="upd-card-desc"><?php echo htmlspecialchars($upd['description']); ?></p>
-                            <button class="upd-read-btn">Read More <i class="fas fa-arrow-right"></i></button>
-                        </div>
-                        <div class="upd-card-accent"></div>
+
+                    <div class="upd-card-bg">
+                        <?php if ($coverSrc): ?>
+                            <img src="<?php echo $coverSrc; ?>" alt="<?php echo htmlspecialchars($upd['title']); ?>" loading="lazy">
+                        <?php else: ?>
+                            <div class="upd-card-bg-placeholder"><i class="fas fa-newspaper"></i></div>
+                        <?php endif; ?>
                     </div>
+                    <div class="upd-date-badge"><i class="fas fa-calendar-alt"></i><?php echo $date; ?></div>
+                    <div class="upd-learn-more">
+                        <span class="upd-learn-more-label">Learn More <i class="fas fa-arrow-right"></i></span>
+                    </div>
+                    <div class="upd-card-bar">
+                        <h3 class="upd-card-title"><?php echo htmlspecialchars($upd['title']); ?></h3>
+                    </div>
+
                 </article>
                 <?php endforeach; ?>
             </div>
@@ -617,32 +619,14 @@ $all_updates = $updates_result ? $updates_result->fetch_all(MYSQLI_ASSOC) : [];
             <?php endif; ?>
 
             <?php else: ?>
-            <div style="text-align:center; color:var(--text-light); padding:3rem 1rem;">
-                <i class="fas fa-newspaper" style="font-size:3rem; margin-bottom:1rem; display:block; opacity:.3;"></i>
+            <div style="text-align:center;color:var(--text-light);padding:3rem 1rem;">
+                <i class="fas fa-newspaper" style="font-size:3rem;margin-bottom:1rem;display:block;opacity:.3;"></i>
                 No updates yet. Check back soon!
             </div>
             <?php endif; ?>
 
         </div>
     </section>
-
-    <!-- Updates Detail Modal -->
-    <div id="updModal" role="dialog" aria-modal="true" aria-labelledby="updModalTitle">
-        <div class="updm-box">
-            <button class="updm-close" id="updModalClose">&times;</button>
-            <div class="updm-img-wrap" id="updModalImgWrap">
-                <img id="updModalImg" src="" alt="" style="display:none;">
-                <div class="updm-img-placeholder" id="updModalImgPlaceholder"><i class="fas fa-newspaper"></i></div>
-            </div>
-            <div class="updm-body">
-                <div class="updm-meta"><i class="fas fa-calendar-alt"></i> <span id="updModalDate"></span></div>
-                <h2 class="updm-title" id="updModalTitle"></h2>
-                <div class="updm-divider"></div>
-                <p class="updm-desc" id="updModalDesc"></p>
-
-            </div>
-        </div>
-    </div>
 
     <!-- ── Founder / CEO ── -->
     <section id="founder">

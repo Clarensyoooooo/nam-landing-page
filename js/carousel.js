@@ -601,47 +601,30 @@
 
 
     /* ═══════════════════════════════════════════════════════════════
-       11. SERVICES — WHEEL-INTERCEPTED HORIZONTAL CARD SLIDER
-       Strategy:
-         • Section height = 100vh (no scroll budget trap).
-         • We intercept wheel events ONLY while the section is in view
-           AND the animation is not yet complete.
-         • Once the last card is shown, wheel events pass through normally.
-         • Scrolling back up ALWAYS passes through — no blocking ever.
-         • Arrow buttons directly update the card index.
+       11. SERVICES — simple prev/next arrow carousel (no scroll hijack)
     ═══════════════════════════════════════════════════════════════ */
     (function () {
 
-        var svcSection  = document.getElementById('services');
         var svcTrack    = document.getElementById('svcTrack');
         var svcCounter  = document.getElementById('svcCounter');
         var svcFill     = document.getElementById('svcProgressFill');
         var svcDotsWrap = document.getElementById('svcDots');
-        var svcHint     = document.getElementById('svcScrollHint');
         var btnPrev     = document.getElementById('svcBtnPrev');
         var btnNext     = document.getElementById('svcBtnNext');
 
-        if (!svcSection || !svcTrack) return;
+        if (!svcTrack) return;
 
         var svcCards = Array.from(svcTrack.querySelectorAll('.svc-card'));
         var N = svcCards.length;
         if (N === 0) return;
 
-        var CARD_W   = 300;
-        var CARD_H   = 400;
-        var CARD_GAP = 22;
-
-        /* Current active card index (0 to N-1), driven by wheel or arrows */
-        var activeIdx   = 0;
-        var prevIdx     = -1;
-        var done        = false;   /* true once last card has been reached */
-        var animRaf     = null;
-        var currentTx   = 0;      /* current rendered translateX */
-        var targetTx    = 0;      /* target translateX to animate towards */
-        var wheelCooldown = false; /* debounce rapid wheel events */
-
-        /* ── Section: just 100vh — no scroll budget needed ── */
-        svcSection.style.height = '';  /* let CSS handle it */
+        var CARD_W   = 280;
+        var CARD_GAP = 18;
+        var activeIdx = 0;
+        var prevIdx   = -1;
+        var animRaf   = null;
+        var currentTx = 0;
+        var targetTx  = 0;
 
         /* ── Build dots ── */
         var svcDots = [];
@@ -649,45 +632,41 @@
             svcCards.forEach(function (_, i) {
                 var d = document.createElement('button');
                 d.className = 'svc-dot';
-                d.setAttribute('aria-label', 'Go to service ' + (i + 1));
+                d.setAttribute('aria-label', 'Service ' + (i + 1));
                 svcDotsWrap.appendChild(d);
                 svcDots.push(d);
                 d.addEventListener('click', function () { goToCard(i); });
             });
         }
 
-        /* ── Recalculate card dimensions on resize ── */
+        /* ── Card dimensions by breakpoint ── */
         function recalc() {
             var vw = window.innerWidth;
-            CARD_W = vw <= 480 ? 200 : vw <= 768 ? 240 : 300;
-            CARD_H = vw <= 480 ? 290 : vw <= 768 ? 330 : 400;
+            CARD_W = vw <= 480 ? 185 : vw <= 768 ? 220 : 280;
+            var CARD_H = vw <= 480 ? 260 : vw <= 768 ? 300 : 370;
 
             svcCards.forEach(function (c) {
-                c.style.width      = CARD_W + 'px';
-                c.style.minWidth   = CARD_W + 'px';
-                c.style.maxWidth   = CARD_W + 'px';
-                c.style.height     = CARD_H + 'px';
+                c.style.width     = CARD_W + 'px';
+                c.style.minWidth  = CARD_W + 'px';
+                c.style.maxWidth  = CARD_W + 'px';
+                c.style.height    = CARD_H + 'px';
                 c.style.flexShrink = '0';
-                c.style.flexGrow   = '0';
-                c.style.flexBasis  = CARD_W + 'px';
             });
-
             svcTrack.style.flexWrap = 'nowrap';
             svcTrack.style.width    = 'max-content';
 
-            /* Re-apply current position */
-            targetTx = getTxForCard(activeIdx);
+            targetTx  = getTxForCard(activeIdx);
             currentTx = targetTx;
             svcTrack.style.transform = 'translateX(' + currentTx + 'px)';
         }
 
-        /* tx so that card[idx] is centred in the viewport */
+        /* centre the active card in the viewport */
         function getTxForCard(idx) {
             var vw = window.innerWidth;
             return (vw * 0.5 - CARD_W * 0.5) - idx * (CARD_W + CARD_GAP);
         }
 
-        /* ── Animate track smoothly towards targetTx ── */
+        /* smooth lerp animation */
         function animateTick() {
             var diff = targetTx - currentTx;
             if (Math.abs(diff) < 0.5) {
@@ -700,22 +679,18 @@
             svcTrack.style.transform = 'translateX(' + currentTx + 'px)';
             animRaf = requestAnimationFrame(animateTick);
         }
+        function startAnim() { if (!animRaf) animRaf = requestAnimationFrame(animateTick); }
 
-        function startAnim() {
-            if (!animRaf) animRaf = requestAnimationFrame(animateTick);
-        }
+        function pad(n) { return n < 10 ? '0' + n : '' + n; }
 
-        /* ── Go to a specific card index ── */
         function goToCard(idx) {
             idx = Math.max(0, Math.min(N - 1, idx));
             activeIdx = idx;
             targetTx  = getTxForCard(idx);
-            done = (idx === N - 1);
             updateUI();
             startAnim();
         }
 
-        /* ── Update counter, dots, progress bar, arrow states ── */
         function updateUI() {
             if (activeIdx !== prevIdx) {
                 prevIdx = activeIdx;
@@ -726,100 +701,47 @@
             if (btnPrev) btnPrev.disabled = (activeIdx === 0);
             if (btnNext) btnNext.disabled = (activeIdx === N - 1);
 
-            /* Card state classes */
             svcCards.forEach(function (card, i) {
                 card.classList.remove('svc-active', 'svc-near', 'svc-far', 'svc-right');
                 var diff = i - activeIdx;
-                if (diff === 0)            card.classList.add('svc-active');
-                else if (Math.abs(diff) === 1) { card.classList.add('svc-near'); if (diff > 0) card.classList.add('svc-right'); }
-                else                           { card.classList.add('svc-far');  if (diff > 0) card.classList.add('svc-right'); }
+                if (diff === 0)                { card.classList.add('svc-active'); }
+                else if (Math.abs(diff) === 1) { card.classList.add('svc-near');  if (diff > 0) card.classList.add('svc-right'); }
+                else                           { card.classList.add('svc-far');   if (diff > 0) card.classList.add('svc-right'); }
             });
         }
 
-        function pad(n) { return n < 10 ? '0' + n : '' + n; }
-
-        /* ── Arrow buttons ── */
+        /* Arrow buttons */
         if (btnPrev) btnPrev.addEventListener('click', function (e) { e.stopPropagation(); goToCard(activeIdx - 1); });
         if (btnNext) btnNext.addEventListener('click', function (e) { e.stopPropagation(); goToCard(activeIdx + 1); });
 
-        /* ── Check if the services section is the active section on screen ──
-           Only return true when the section's TOP edge has scrolled to within
-           the viewport (past the navbar) AND the section BOTTOM is still below
-           the middle of the screen. This prevents triggering while the user is
-           still in the About section above. */
-        function isSectionVisible() {
-            var rect    = svcSection.getBoundingClientRect();
-            var navH    = 72;
-            var inView  = rect.top <= navH && rect.bottom > window.innerHeight * 0.5;
-            return inView;
-        }
-
-        /* ── Wheel event interceptor ── */
-        window.addEventListener('wheel', function (e) {
-            /* Only intercept downward scrolling, only when section is visible,
-               and only when animation is not yet complete */
-            if (done)              return;   /* finished — never intercept again */
-            if (e.deltaY <= 0)     return;   /* scrolling up — always pass through */
-            if (!isSectionVisible()) return; /* section not in view — pass through */
-
-            /* Intercept: prevent page scroll, advance to next card instead */
-            e.preventDefault();
-
-            if (wheelCooldown) return;
-            wheelCooldown = true;
-            setTimeout(function () { wheelCooldown = false; }, 600);
-
-            if (activeIdx < N - 1) {
-                goToCard(activeIdx + 1);
-                if (svcHint) svcHint.classList.add('svc-hint-done');
-            }
-        }, { passive: false });
-
-        /* Touch support */
-        var touchStartY = 0;
-        window.addEventListener('touchstart', function (e) {
-            touchStartY = e.touches[0].clientY;
+        /* Swipe on mobile */
+        var touchStartX = 0;
+        svcTrack.addEventListener('touchstart', function (e) { touchStartX = e.touches[0].clientX; }, { passive: true });
+        svcTrack.addEventListener('touchend', function (e) {
+            var dx = touchStartX - e.changedTouches[0].clientX;
+            if (Math.abs(dx) > 40) goToCard(dx > 0 ? activeIdx + 1 : activeIdx - 1);
         }, { passive: true });
 
-        window.addEventListener('touchmove', function (e) {
-            if (done) return;
-            if (!isSectionVisible()) return;
-            var deltaY = touchStartY - e.touches[0].clientY;
-            if (deltaY < 20) return;   /* only trigger on meaningful downward swipe */
-
-            e.preventDefault();
-            touchStartY = e.touches[0].clientY;
-
-            if (activeIdx < N - 1) {
-                goToCard(activeIdx + 1);
-                if (svcHint) svcHint.classList.add('svc-hint-done');
-            }
-        }, { passive: false });
-
-        /* ── Card click → open service detail modal ── */
+        /* Card click → open modal */
         svcCards.forEach(function (card) {
             card.addEventListener('click', function () {
-                var name   = card.getAttribute('data-name');
-                var desc   = card.getAttribute('data-desc');
+                var name = card.getAttribute('data-name');
+                var desc = card.getAttribute('data-desc');
                 var images = [];
                 try { images = JSON.parse(card.getAttribute('data-imgs') || '[]'); } catch (e) {}
                 openSvcModal(name, desc, images);
             });
         });
 
-        /* ── Init ── */
+        /* Init */
         function init() {
             recalc();
             goToCard(0);
-            if (svcHint) svcHint.classList.remove('svc-hint-done');
             window.addEventListener('resize', function () { recalc(); updateUI(); });
         }
 
-        if (document.readyState === 'complete') {
-            init();
-        } else {
-            window.addEventListener('load', init);
-        }
+        if (document.readyState === 'complete') { init(); }
+        else { window.addEventListener('load', init); }
 
     }());
 
