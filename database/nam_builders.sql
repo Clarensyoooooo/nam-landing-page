@@ -104,6 +104,22 @@ CREATE TABLE IF NOT EXISTS supplies (
     FOREIGN KEY (category_id) REFERENCES supply_categories(id) ON DELETE CASCADE
 );
 
--- Indexes for fast lookups
+
 CREATE INDEX idx_supplies_category ON supplies(category_id);
 CREATE INDEX idx_supplies_active   ON supplies(is_active);
+
+USE nam_builders;
+
+CREATE TABLE IF NOT EXISTS updates (
+    id          INT PRIMARY KEY AUTO_INCREMENT,
+    title       VARCHAR(255)  NOT NULL,
+    description TEXT          NOT NULL,
+    image_path  VARCHAR(255)  DEFAULT NULL,
+    is_active   TINYINT(1)    DEFAULT 1,
+    sort_order  INT           DEFAULT 0,
+    created_at  TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Index for fast active-posts fetch
+CREATE INDEX idx_updates_active ON updates(is_active, sort_order);

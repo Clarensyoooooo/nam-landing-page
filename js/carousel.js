@@ -27,10 +27,13 @@
     document.querySelectorAll('a[href^="#"]').forEach(function (a) {
         a.addEventListener('click', function (e) {
             var target = this.getAttribute('href');
-            if (target && target !== '#' && document.querySelector(target)) {
-                e.preventDefault();
-                document.querySelector(target).scrollIntoView({ behavior: 'smooth' });
-            }
+            if (!target || target === '#' || !document.querySelector(target)) return;
+            e.preventDefault();
+            var targetEl  = document.querySelector(target);
+            var navHeight = 72;
+            /* Use offsetTop so we scroll to the element's true document position,
+               bypassing any sticky scroll-budget traps */
+            window.scrollTo({ top: Math.max(0, targetEl.offsetTop - navHeight), behavior: 'smooth' });
         });
     });
 
@@ -598,24 +601,25 @@
 
 
     /* ═══════════════════════════════════════════════════════════════
-       11. SERVICES — HORIZONTAL SCROLL HIJACK
-       Rules:
-         • Hijack is ONLY active when scrolling DOWN through the section.
-         • Scrolling back UP passes straight through — no re-hijack.
-         • Arrow buttons let the user jump between cards without scrolling.
-         • The freeze starts exactly when the sticky header ("What We Do /
-           Our Services") hits the top of the viewport (top:0 on .svc-sticky).
+       11. SERVICES — WHEEL-INTERCEPTED HORIZONTAL CARD SLIDER
+       Strategy:
+         • Section height = 100vh (no scroll budget trap).
+         • We intercept wheel events ONLY while the section is in view
+           AND the animation is not yet complete.
+         • Once the last card is shown, wheel events pass through normally.
+         • Scrolling back up ALWAYS passes through — no blocking ever.
+         • Arrow buttons directly update the card index.
     ═══════════════════════════════════════════════════════════════ */
     (function () {
 
-        var svcSection = document.getElementById('services');
-        var svcTrack   = document.getElementById('svcTrack');
-        var svcCounter = document.getElementById('svcCounter');
-        var svcFill    = document.getElementById('svcProgressFill');
-        var svcDotsWrap= document.getElementById('svcDots');
-        var svcHint    = document.getElementById('svcScrollHint');
-        var btnPrev    = document.getElementById('svcBtnPrev');
-        var btnNext    = document.getElementById('svcBtnNext');
+        var svcSection  = document.getElementById('services');
+        var svcTrack    = document.getElementById('svcTrack');
+        var svcCounter  = document.getElementById('svcCounter');
+        var svcFill     = document.getElementById('svcProgressFill');
+        var svcDotsWrap = document.getElementById('svcDots');
+        var svcHint     = document.getElementById('svcScrollHint');
+        var btnPrev     = document.getElementById('svcBtnPrev');
+        var btnNext     = document.getElementById('svcBtnNext');
 
         if (!svcSection || !svcTrack) return;
 
@@ -624,169 +628,175 @@
         if (N === 0) return;
 
         var CARD_W   = 300;
+        var CARD_H   = 400;
         var CARD_GAP = 22;
-        var LEAD     = 0;
-        var TRAIL    = 0;
 
-        /* Track whether the user has already passed through going downward.
-           Once they have, we never hijack on the way back up. */
-        var alreadyPassed = false;
-        var lastScrollY   = window.scrollY;
+        /* Current active card index (0 to N-1), driven by wheel or arrows */
+        var activeIdx   = 0;
+        var prevIdx     = -1;
+        var done        = false;   /* true once last card has been reached */
+        var animRaf     = null;
+        var currentTx   = 0;      /* current rendered translateX */
+        var targetTx    = 0;      /* target translateX to animate towards */
+        var wheelCooldown = false; /* debounce rapid wheel events */
+
+        /* ── Section: just 100vh — no scroll budget needed ── */
+        svcSection.style.height = '';  /* let CSS handle it */
 
         /* ── Build dots ── */
         var svcDots = [];
-        svcCards.forEach(function (_, i) {
-            var d = document.createElement('button');
-            d.className = 'svc-dot';
-            d.setAttribute('aria-label', 'Go to service ' + (i + 1));
-            svcDotsWrap.appendChild(d);
-            svcDots.push(d);
-            d.addEventListener('click', function () { jumpToCard(i); });
-        });
-
-        /* ── Jump to a card by setting page scroll position ── */
-        function jumpToCard(idx) {
-            var budget   = svcSection.offsetHeight - window.innerHeight;
-            var fraction = N > 1 ? idx / (N - 1) : 0;
-            var targetY  = svcSection.offsetTop + fraction * budget;
-            window.scrollTo({ top: targetY, behavior: 'smooth' });
-        }
-
-        /* ── Arrow buttons ── */
-        var currentCardIdx = 0;
-        if (btnPrev) {
-            btnPrev.addEventListener('click', function () {
-                jumpToCard(Math.max(0, currentCardIdx - 1));
-            });
-        }
-        if (btnNext) {
-            btnNext.addEventListener('click', function () {
-                jumpToCard(Math.min(N - 1, currentCardIdx + 1));
+        if (svcDotsWrap) {
+            svcCards.forEach(function (_, i) {
+                var d = document.createElement('button');
+                d.className = 'svc-dot';
+                d.setAttribute('aria-label', 'Go to service ' + (i + 1));
+                svcDotsWrap.appendChild(d);
+                svcDots.push(d);
+                d.addEventListener('click', function () { goToCard(i); });
             });
         }
 
-        /* ── Recalculate geometry ── */
+        /* ── Recalculate card dimensions on resize ── */
         function recalc() {
-            var vw     = window.innerWidth;
-            CARD_W     = vw <= 480 ? 200 : vw <= 768 ? 240 : 300;
-            var CARD_H = vw <= 480 ? 290 : vw <= 768 ? 330 : 400;
+            var vw = window.innerWidth;
+            CARD_W = vw <= 480 ? 200 : vw <= 768 ? 240 : 300;
+            CARD_H = vw <= 480 ? 290 : vw <= 768 ? 330 : 400;
 
-            /* Lock every card to exact dimensions so nothing collapses */
             svcCards.forEach(function (c) {
-                c.style.flexBasis  = CARD_W + 'px';
                 c.style.width      = CARD_W + 'px';
                 c.style.minWidth   = CARD_W + 'px';
                 c.style.maxWidth   = CARD_W + 'px';
                 c.style.height     = CARD_H + 'px';
                 c.style.flexShrink = '0';
                 c.style.flexGrow   = '0';
+                c.style.flexBasis  = CARD_W + 'px';
             });
 
-            /* Track must never wrap — stretch to its natural full width */
-            svcTrack.style.width    = 'max-content';
-            svcTrack.style.minWidth = 'max-content';
             svcTrack.style.flexWrap = 'nowrap';
+            svcTrack.style.width    = 'max-content';
 
-            LEAD  = vw * 0.5 - CARD_W * 0.5;
-            TRAIL = vw * 0.5 - CARD_W * 0.5;
-
-            var totalTrack = LEAD + N * CARD_W + (N - 1) * CARD_GAP + TRAIL;
-            /* Section height = full horizontal travel + one viewport = scroll budget */
-            svcSection.style.height = (totalTrack + window.innerHeight) + 'px';
+            /* Re-apply current position */
+            targetTx = getTxForCard(activeIdx);
+            currentTx = targetTx;
+            svcTrack.style.transform = 'translateX(' + currentTx + 'px)';
         }
 
-        /* ── RAF-gated tick ── */
-        var svcRaf   = null;
-        var prevIdx  = -1;
-
-        function onSvcScroll() {
-            if (svcRaf) return;
-            svcRaf = requestAnimationFrame(svcTick);
+        /* tx so that card[idx] is centred in the viewport */
+        function getTxForCard(idx) {
+            var vw = window.innerWidth;
+            return (vw * 0.5 - CARD_W * 0.5) - idx * (CARD_W + CARD_GAP);
         }
 
-        function svcTick() {
-            svcRaf = null;
+        /* ── Animate track smoothly towards targetTx ── */
+        function animateTick() {
+            var diff = targetTx - currentTx;
+            if (Math.abs(diff) < 0.5) {
+                currentTx = targetTx;
+                svcTrack.style.transform = 'translateX(' + currentTx + 'px)';
+                animRaf = null;
+                return;
+            }
+            currentTx += diff * 0.14;
+            svcTrack.style.transform = 'translateX(' + currentTx + 'px)';
+            animRaf = requestAnimationFrame(animateTick);
+        }
 
-            var scrollingDown = window.scrollY >= lastScrollY;
-            lastScrollY = window.scrollY;
+        function startAnim() {
+            if (!animRaf) animRaf = requestAnimationFrame(animateTick);
+        }
 
-            /* Distance scrolled past the section top */
-            var scrolled = window.scrollY - svcSection.offsetTop;
-            var budget   = svcSection.offsetHeight - window.innerHeight;
-            var progress = Math.max(0, Math.min(1, scrolled / budget));
+        /* ── Go to a specific card index ── */
+        function goToCard(idx) {
+            idx = Math.max(0, Math.min(N - 1, idx));
+            activeIdx = idx;
+            targetTx  = getTxForCard(idx);
+            done = (idx === N - 1);
+            updateUI();
+            startAnim();
+        }
 
-            /* Once the user has scrolled all the way through (progress ≥ 1)
-               mark it as passed — no more hijacking on the way back up. */
-            if (progress >= 1) alreadyPassed = true;
+        /* ── Update counter, dots, progress bar, arrow states ── */
+        function updateUI() {
+            if (activeIdx !== prevIdx) {
+                prevIdx = activeIdx;
+                if (svcCounter) svcCounter.textContent = pad(activeIdx + 1) + ' / ' + pad(N);
+                svcDots.forEach(function (d, i) { d.classList.toggle('svc-dot-active', i === activeIdx); });
+            }
+            if (svcFill) svcFill.style.transform = 'scaleX(' + (N > 1 ? activeIdx / (N - 1) : 1) + ')';
+            if (btnPrev) btnPrev.disabled = (activeIdx === 0);
+            if (btnNext) btnNext.disabled = (activeIdx === N - 1);
 
-            /* If scrolling back up AND already passed → skip card animation,
-               just let progress drive whatever the natural scroll gives us
-               (cards will still reflect position but section won't trap them). */
-
-            /* translateX */
-            var totalTrack = LEAD + N * CARD_W + (N - 1) * CARD_GAP + TRAIL;
-            var maxShift   = totalTrack - window.innerWidth;
-            var tx         = -(progress * maxShift);
-
-            svcTrack.style.transform = 'translateX(' + tx + 'px)';
-
-            /* Active card */
-            var vCentre   = window.innerWidth * 0.5;
-            var activeIdx = 0;
-            var minDist   = Infinity;
-
-            svcCards.forEach(function (card, i) {
-                var cardLeft   = LEAD + i * (CARD_W + CARD_GAP) + tx;
-                var cardCentre = cardLeft + CARD_W * 0.5;
-                var dist = Math.abs(cardCentre - vCentre);
-                if (dist < minDist) { minDist = dist; activeIdx = i; }
-            });
-
-            currentCardIdx = activeIdx;
-
-            /* Card classes */
+            /* Card state classes */
             svcCards.forEach(function (card, i) {
                 card.classList.remove('svc-active', 'svc-near', 'svc-far', 'svc-right');
                 var diff = i - activeIdx;
-                if (diff === 0) {
-                    card.classList.add('svc-active');
-                } else if (Math.abs(diff) === 1) {
-                    card.classList.add('svc-near');
-                    if (diff > 0) card.classList.add('svc-right');
-                } else {
-                    card.classList.add('svc-far');
-                    if (diff > 0) card.classList.add('svc-right');
-                }
+                if (diff === 0)            card.classList.add('svc-active');
+                else if (Math.abs(diff) === 1) { card.classList.add('svc-near'); if (diff > 0) card.classList.add('svc-right'); }
+                else                           { card.classList.add('svc-far');  if (diff > 0) card.classList.add('svc-right'); }
             });
-
-            /* Counter + dots */
-            if (activeIdx !== prevIdx) {
-                prevIdx = activeIdx;
-                if (svcCounter) {
-                    svcCounter.textContent = pad(activeIdx + 1) + ' / ' + pad(N);
-                }
-                svcDots.forEach(function (d, i) {
-                    d.classList.toggle('svc-dot-active', i === activeIdx);
-                });
-            }
-
-            if (svcFill) {
-                svcFill.style.transform = 'scaleX(' + (N > 1 ? activeIdx / (N - 1) : 1) + ')';
-            }
-
-            /* Hint */
-            if (svcHint) {
-                svcHint.classList.toggle('svc-hint-done', progress > 0.06);
-            }
-
-            /* Arrow button states */
-            if (btnPrev) btnPrev.disabled = (activeIdx === 0);
-            if (btnNext) btnNext.disabled = (activeIdx === N - 1);
         }
 
         function pad(n) { return n < 10 ? '0' + n : '' + n; }
 
-        /* ── Card click → open service modal ── */
+        /* ── Arrow buttons ── */
+        if (btnPrev) btnPrev.addEventListener('click', function (e) { e.stopPropagation(); goToCard(activeIdx - 1); });
+        if (btnNext) btnNext.addEventListener('click', function (e) { e.stopPropagation(); goToCard(activeIdx + 1); });
+
+        /* ── Check if the services section is the active section on screen ──
+           Only return true when the section's TOP edge has scrolled to within
+           the viewport (past the navbar) AND the section BOTTOM is still below
+           the middle of the screen. This prevents triggering while the user is
+           still in the About section above. */
+        function isSectionVisible() {
+            var rect    = svcSection.getBoundingClientRect();
+            var navH    = 72;
+            var inView  = rect.top <= navH && rect.bottom > window.innerHeight * 0.5;
+            return inView;
+        }
+
+        /* ── Wheel event interceptor ── */
+        window.addEventListener('wheel', function (e) {
+            /* Only intercept downward scrolling, only when section is visible,
+               and only when animation is not yet complete */
+            if (done)              return;   /* finished — never intercept again */
+            if (e.deltaY <= 0)     return;   /* scrolling up — always pass through */
+            if (!isSectionVisible()) return; /* section not in view — pass through */
+
+            /* Intercept: prevent page scroll, advance to next card instead */
+            e.preventDefault();
+
+            if (wheelCooldown) return;
+            wheelCooldown = true;
+            setTimeout(function () { wheelCooldown = false; }, 600);
+
+            if (activeIdx < N - 1) {
+                goToCard(activeIdx + 1);
+                if (svcHint) svcHint.classList.add('svc-hint-done');
+            }
+        }, { passive: false });
+
+        /* Touch support */
+        var touchStartY = 0;
+        window.addEventListener('touchstart', function (e) {
+            touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        window.addEventListener('touchmove', function (e) {
+            if (done) return;
+            if (!isSectionVisible()) return;
+            var deltaY = touchStartY - e.touches[0].clientY;
+            if (deltaY < 20) return;   /* only trigger on meaningful downward swipe */
+
+            e.preventDefault();
+            touchStartY = e.touches[0].clientY;
+
+            if (activeIdx < N - 1) {
+                goToCard(activeIdx + 1);
+                if (svcHint) svcHint.classList.add('svc-hint-done');
+            }
+        }, { passive: false });
+
+        /* ── Card click → open service detail modal ── */
         svcCards.forEach(function (card) {
             card.addEventListener('click', function () {
                 var name   = card.getAttribute('data-name');
@@ -797,14 +807,12 @@
             });
         });
 
-        /* ── Init — defer to window.load so layout is fully settled ── */
+        /* ── Init ── */
         function init() {
             recalc();
-            /* Apply initial transform before any scroll so the first card is centred */
-            svcTrack.style.transform = 'translateX(' + LEAD + 'px)';
-            window.addEventListener('scroll', onSvcScroll, { passive: true });
-            window.addEventListener('resize', function () { recalc(); svcTick(); });
-            svcTick();
+            goToCard(0);
+            if (svcHint) svcHint.classList.remove('svc-hint-done');
+            window.addEventListener('resize', function () { recalc(); updateUI(); });
         }
 
         if (document.readyState === 'complete') {

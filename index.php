@@ -35,6 +35,14 @@ $all_supplies_result = $conn->query("
     ORDER BY sc.sort_order ASC, s.sort_order ASC
 ");
 $all_supplies = $all_supplies_result ? $all_supplies_result->fetch_all(MYSQLI_ASSOC) : [];
+
+// ── Updates / Posts ──
+$updates_result = $conn->query("
+    SELECT * FROM updates
+    WHERE is_active = 1
+    ORDER BY sort_order ASC, created_at DESC
+");
+$all_updates = $updates_result ? $updates_result->fetch_all(MYSQLI_ASSOC) : [];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -46,6 +54,7 @@ $all_supplies = $all_supplies_result ? $all_supplies_result->fetch_all(MYSQLI_AS
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/updates.css">
 </head>
 <body>
 
@@ -65,6 +74,8 @@ $all_supplies = $all_supplies_result ? $all_supplies_result->fetch_all(MYSQLI_AS
                         <li class="nav-item"><a class="nav-link" href="#home"     data-section="home">Home</a></li>
                         <li class="nav-item"><a class="nav-link" href="#about"    data-section="about">About</a></li>
                         <li class="nav-item"><a class="nav-link" href="#services" data-section="services">Services</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#supplies" data-section="supplies">Supplies</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#updates"  data-section="updates">Updates</a></li>
                         <li class="nav-item ms-lg-2">
                             <button class="btn-contact-nav" id="navContactBtn" type="button">
                                 <i class="fas fa-paper-plane"></i> Contact Us
@@ -286,7 +297,7 @@ $all_supplies = $all_supplies_result ? $all_supplies_result->fetch_all(MYSQLI_AS
             <div class="svc-header">
                 <div>
                     <p class="svc-eyebrow">What We Do</p>
-                    <h2 class="svc-title">Our <span class="svc-title-accent">Services</span></h2>
+                    <h2 class="svc-title">Our Services</h2>
                     <p class="svc-subtitle">Comprehensive solutions tailored to your needs. Scroll to explore.</p>
                 </div>
                 <div class="svc-meta">
@@ -537,6 +548,102 @@ $all_supplies = $all_supplies_result ? $all_supplies_result->fetch_all(MYSQLI_AS
         </div>
     </section>
 
+    <!-- ════════════════════════════════════════════════════════
+         UPDATES / POSTS
+    ════════════════════════════════════════════════════════ -->
+    <section id="updates">
+        <div class="container-lg">
+
+            <div class="upd-section-header reveal">
+                <div>
+                    <span class="section-tag">Latest News</span>
+                    <h2 class="upd-section-title">Updates &amp; <span class="upd-title-accent">Posts</span></h2>
+                    <p class="upd-section-sub">Stay informed on our latest projects, announcements, and milestones.</p>
+                </div>
+                <?php if (count($all_updates) > 3): ?>
+                <button class="upd-see-all-btn" id="updSeeAllBtn">
+                    View All <i class="fas fa-arrow-right"></i>
+                </button>
+                <?php endif; ?>
+            </div>
+
+            <?php if (!empty($all_updates)): ?>
+            <div class="upd-grid" id="updGrid">
+                <?php foreach ($all_updates as $ui => $upd):
+                    $imgSrc = !empty($upd['image_path']) ? UPLOADS_URL . htmlspecialchars($upd['image_path']) : '';
+                    $date   = date('M j, Y', strtotime($upd['created_at']));
+                    $hidden = $ui >= 3 ? ' upd-card-hidden' : '';
+                ?>
+                <article class="upd-card reveal reveal-delay-<?php echo ($ui % 3) + 1; ?><?php echo $hidden; ?>"
+                         data-id="<?php echo $upd['id']; ?>"
+                         data-title="<?php echo htmlspecialchars($upd['title']); ?>"
+                         data-desc="<?php echo htmlspecialchars($upd['description']); ?>"
+                         data-img="<?php echo $imgSrc; ?>"
+                         data-date="<?php echo $date; ?>">
+                    <div class="upd-card-inner">
+                        <div class="upd-card-img-wrap">
+                            <?php if ($imgSrc): ?>
+                                <img src="<?php echo $imgSrc; ?>"
+                                     alt="<?php echo htmlspecialchars($upd['title']); ?>"
+                                     loading="lazy">
+                            <?php else: ?>
+                                <div class="upd-img-placeholder">
+                                    <i class="fas fa-newspaper"></i>
+                                </div>
+                            <?php endif; ?>
+                            <div class="upd-date-badge">
+                                <i class="fas fa-calendar-alt"></i>
+                                <?php echo $date; ?>
+                            </div>
+                        </div>
+                        <div class="upd-card-body">
+                            <h3 class="upd-card-title"><?php echo htmlspecialchars($upd['title']); ?></h3>
+                            <p class="upd-card-desc"><?php echo htmlspecialchars($upd['description']); ?></p>
+                            <button class="upd-read-btn">Read More <i class="fas fa-arrow-right"></i></button>
+                        </div>
+                        <div class="upd-card-accent"></div>
+                    </div>
+                </article>
+                <?php endforeach; ?>
+            </div>
+
+            <?php if (count($all_updates) > 3): ?>
+            <div class="upd-toggle-wrap" id="updToggleWrap" style="display:none;">
+                <button class="upd-toggle-btn" id="updToggleBtn" onclick="toggleUpdates()">
+                    <span id="updToggleLabel">Show All <?php echo count($all_updates); ?> Posts</span>
+                    <i class="fas fa-chevron-down" id="updToggleIcon"></i>
+                </button>
+            </div>
+            <?php endif; ?>
+
+            <?php else: ?>
+            <div style="text-align:center; color:var(--text-light); padding:3rem 1rem;">
+                <i class="fas fa-newspaper" style="font-size:3rem; margin-bottom:1rem; display:block; opacity:.3;"></i>
+                No updates yet. Check back soon!
+            </div>
+            <?php endif; ?>
+
+        </div>
+    </section>
+
+    <!-- Updates Detail Modal -->
+    <div id="updModal" role="dialog" aria-modal="true" aria-labelledby="updModalTitle">
+        <div class="updm-box">
+            <button class="updm-close" id="updModalClose">&times;</button>
+            <div class="updm-img-wrap" id="updModalImgWrap">
+                <img id="updModalImg" src="" alt="" style="display:none;">
+                <div class="updm-img-placeholder" id="updModalImgPlaceholder"><i class="fas fa-newspaper"></i></div>
+            </div>
+            <div class="updm-body">
+                <div class="updm-meta"><i class="fas fa-calendar-alt"></i> <span id="updModalDate"></span></div>
+                <h2 class="updm-title" id="updModalTitle"></h2>
+                <div class="updm-divider"></div>
+                <p class="updm-desc" id="updModalDesc"></p>
+
+            </div>
+        </div>
+    </div>
+
     <!-- ── Founder / CEO ── -->
     <section id="founder">
         <div class="container-lg">
@@ -743,6 +850,7 @@ $all_supplies = $all_supplies_result ? $all_supplies_result->fetch_all(MYSQLI_AS
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/carousel.js"></script>
+    <script src="js/updates.js"></script>
 
 </body>
 </html>

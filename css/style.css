@@ -398,26 +398,28 @@ body { overflow-x:hidden; }
    Light theme — same palette as the rest of the site.
    ════════════════════════════════════════════════════════════════ */
 
-/* Section wrapper — JS sets height for scroll budget */
+/* Section wrapper — wheel events drive the cards, no scroll budget */
 #services {
     position: relative;
     background: var(--light-bg);
     padding: 0;
-}
-
-/*
-  top: 72px = fixed navbar height.
-  The "What We Do / Our Services" heading snaps to the top of the screen
-  exactly when the freeze begins — not mid-page, not at the previous section.
-*/
-.svc-sticky {
-    position: sticky;
-    top: 72px;
-    height: calc(100vh - 72px);
-    overflow: hidden;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
     justify-content: center;
+}
+
+/* No longer sticky — just a flex column that fills the viewport */
+.svc-sticky {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-top: 72px;
+    padding-bottom: 2rem;
+    box-sizing: border-box;
+    min-height: 100vh;
+    position: relative;
 }
 
 .svc-header {
@@ -633,7 +635,7 @@ body { overflow-x:hidden; }
 @keyframes svcHintPulse { 0%,100%{opacity:.5;transform:translateX(0)} 50%{opacity:1;transform:translateX(6px)} }
 
 @media (max-width:768px) {
-    .svc-sticky { top:56px; height:calc(100vh - 56px); }
+    .svc-sticky { padding-top:56px; min-height:100svh; }
     .svc-card   { flex:0 0 240px; height:330px; }
     .svc-header { flex-direction:column; align-items:flex-start; gap:1rem; padding-bottom:1.4rem; }
     .svc-scroll-hint { display:none; }
