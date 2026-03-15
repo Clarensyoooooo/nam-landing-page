@@ -16,7 +16,7 @@ header('Content-Type: application/json');
 $response = ['success' => false, 'message' => ''];
 
 try {
-    // ── 1. Validate OTP first ─────────────────────────────────────────────────
+    // ── 1. Validate OTP ──────────────────────────────────────────────────────
     $submitted_code = trim($_POST['otp_code'] ?? '');
     $otp = $_SESSION['otp_data'] ?? null;
 
@@ -37,7 +37,6 @@ try {
         throw new Exception('Invalid verification code. Please try again.');
     }
 
-    // Mark OTP as used immediately to prevent replay attacks
     $_SESSION['otp_data']['used'] = true;
 
     // ── 2. Validate form fields ───────────────────────────────────────────────
@@ -71,9 +70,15 @@ try {
     if ($stmt->execute()) {
         unset($_SESSION['otp_data']);
 
-        // ── 4. Send email notification to admin ──────────────────────────────
+        // ── 4. Send admin notification email ─────────────────────────────────
         if (class_exists('PHPMailer\PHPMailer\PHPMailer')) {
             try {
+                // ── Fix timezone for accurate date/time ──
+                date_default_timezone_set('Asia/Manila');
+                $received_date = date('F j, Y');       // e.g. March 16, 2026
+                $received_time = date('g:i A');         // e.g. 2:18 PM
+                $received_day  = date('l');             // e.g. Sunday
+
                 $mail = new PHPMailer(true);
                 $mail->isSMTP();
                 $mail->Host       = 'smtp.gmail.com';
@@ -82,97 +87,162 @@ try {
                 $mail->Password   = 'rgxf fubs yjot dmgs';
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                 $mail->Port       = 587;
+                $mail->CharSet    = 'UTF-8';
 
-                $logo_url = BASE_URL . 'css/assets/logo.png';
+                $site_root   = rtrim(str_replace('/backend', '', BASE_URL), '/') . '/';
+                $logo_url    = $site_root . 'css/assets/logo.png';
+                $admin_url   = $site_root . 'admin/dashboard.php?page=messages';
+
                 $mail->setFrom('keithdaniellereyes@gmail.com', 'NAM Builders Website');
                 $mail->addAddress('keithdaniellereyes@gmail.com', 'NAM Builders Admin');
                 $mail->isHTML(true);
-                $mail->Subject = '📬 New Inquiry from ' . $full_name . ' — NAM Builders Website';
+                $mail->Subject = 'New Inquiry: ' . $full_name . ' — NAM Builders';
 
-                $service_row = $service_needed
-                    ? '<tr><td style="padding:10px 16px;font-weight:600;color:#4A5568;background:#f9fafb;border-bottom:1px solid #e2e8f0;width:140px;">Service</td><td style="padding:10px 16px;border-bottom:1px solid #e2e8f0;">' . htmlspecialchars($service_needed) . '</td></tr>'
-                    : '';
-                $phone_row = $phone
-                    ? '<tr><td style="padding:10px 16px;font-weight:600;color:#4A5568;background:#f9fafb;border-bottom:1px solid #e2e8f0;">Phone</td><td style="padding:10px 16px;border-bottom:1px solid #e2e8f0;">' . htmlspecialchars($phone) . '</td></tr>'
-                    : '';
+                // ── Optional rows ──
+                $phone_row = $phone ? '
+                <tr>
+                    <td style="padding:12px 20px;font-size:13px;font-weight:600;color:#64748B;background:#F8FAFC;border-bottom:1px solid #E2E8F0;width:130px;vertical-align:top;">Phone</td>
+                    <td style="padding:12px 20px;font-size:13px;color:#0F172A;border-bottom:1px solid #E2E8F0;vertical-align:top;">' . htmlspecialchars($phone) . '</td>
+                </tr>' : '';
 
-                $mail->Body = '
-<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#f0f4fa;font-family:Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4fa;padding:40px 0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);">
-        <!-- Header -->
-        <tr>
-          <td style="background:linear-gradient(135deg,#0D47A1 0%,#1565C0 60%,#1E88E5 100%);padding:32px 36px;">
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr>
-                <td>
-                  <img src="' . $logo_url . '" alt="NAM Builders" style="height:48px;width:auto;object-fit:contain;margin-bottom:14px;display:block;" onerror="this.style.display=\'none\'">
-                  <h1 style="color:#fff;margin:0;font-size:22px;font-weight:800;letter-spacing:0.02em;">New Website Inquiry</h1>
-                  <p style="color:rgba(255,255,255,0.8);margin:6px 0 0;font-size:14px;">Received on ' . date('F j, Y \a\t g:i A') . '</p>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-        <!-- Alert banner -->
-        <tr>
-          <td style="background:#FFF8E1;border-bottom:2px solid #FFE082;padding:12px 36px;">
-            <p style="margin:0;color:#856404;font-size:13px;font-weight:600;">⚡ A new message has been submitted through the NAM Builders website contact form. Please review and respond promptly.</p>
-          </td>
-        </tr>
-        <!-- Sender Details -->
-        <tr>
-          <td style="padding:28px 36px 10px;">
-            <h2 style="font-size:13px;font-weight:800;color:#1565C0;letter-spacing:0.1em;text-transform:uppercase;margin:0 0 16px;padding-bottom:8px;border-bottom:2px solid #e2e8f0;">Sender Information</h2>
-            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">
-              <tr>
-                <td style="padding:10px 16px;font-weight:600;color:#4A5568;background:#f9fafb;border-bottom:1px solid #e2e8f0;width:140px;">Full Name</td>
-                <td style="padding:10px 16px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0A0A0A;">' . htmlspecialchars($full_name) . '</td>
-              </tr>
-              <tr>
-                <td style="padding:10px 16px;font-weight:600;color:#4A5568;background:#f9fafb;border-bottom:1px solid #e2e8f0;">Email</td>
-                <td style="padding:10px 16px;border-bottom:1px solid #e2e8f0;"><a href="mailto:' . htmlspecialchars($email) . '" style="color:#1565C0;font-weight:600;">' . htmlspecialchars($email) . '</a></td>
-              </tr>
-              ' . $phone_row . '
-              ' . $service_row . '
-            </table>
-          </td>
-        </tr>
-        <!-- Message -->
-        <tr>
-          <td style="padding:16px 36px 28px;">
-            <h2 style="font-size:13px;font-weight:800;color:#1565C0;letter-spacing:0.1em;text-transform:uppercase;margin:0 0 12px;padding-bottom:8px;border-bottom:2px solid #e2e8f0;">Message</h2>
-            <div style="background:#f9fafb;border:1px solid #e2e8f0;border-left:4px solid #1565C0;border-radius:8px;padding:16px 20px;">
-              <p style="margin:0;color:#374151;line-height:1.8;font-size:15px;">' . nl2br(htmlspecialchars($message)) . '</p>
-            </div>
-          </td>
-        </tr>
-        <!-- CTA -->
-        <tr>
-          <td style="padding:0 36px 32px;text-align:center;">
-            <a href="' . BASE_URL . 'admin/dashboard.php?page=messages" style="display:inline-block;background:linear-gradient(135deg,#1565C0,#1E88E5);color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:700;font-size:15px;letter-spacing:0.03em;">View in Admin Panel →</a>
-            <p style="margin:16px 0 0;font-size:12px;color:#9CA3AF;">You can reply directly to this sender from the admin messages panel.</p>
-          </td>
-        </tr>
-        <!-- Footer -->
-        <tr>
-          <td style="background:#f9fafb;border-top:1px solid #e2e8f0;padding:18px 36px;text-align:center;">
-            <p style="margin:0;color:#9CA3AF;font-size:12px;">&copy; ' . date('Y') . ' NAM Builders and Supply Corp. — Automated notification from your website.</p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
+                $service_row = $service_needed ? '
+                <tr>
+                    <td style="padding:12px 20px;font-size:13px;font-weight:600;color:#64748B;background:#F8FAFC;border-bottom:1px solid #E2E8F0;width:130px;vertical-align:top;">Service</td>
+                    <td style="padding:12px 20px;font-size:13px;border-bottom:1px solid #E2E8F0;vertical-align:top;">
+                        <span style="display:inline-block;background:#EFF6FF;color:#1565C0;border:1px solid #BFDBFE;border-radius:50px;padding:2px 12px;font-size:12px;font-weight:700;">' . htmlspecialchars($service_needed) . '</span>
+                    </td>
+                </tr>' : '';
+
+                $mail->Body = '<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>New Inquiry - NAM Builders</title>
+</head>
+<body style="margin:0;padding:0;background:#F0F4FA;font-family:\'Segoe UI\',Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#F0F4FA;padding:40px 16px;">
+<tr><td align="center">
+
+  <!-- Card -->
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(21,101,192,0.10);">
+
+    <!-- ── HEADER ── -->
+    <tr>
+      <td style="background:linear-gradient(135deg,#0D47A1 0%,#1565C0 55%,#1976D2 100%);padding:0;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="padding:32px 36px 24px;">
+              <!-- Logo -->
+              <table cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+                <tr>
+                  <td style="background:rgba(255,255,255,0.15);border-radius:10px;padding:8px 14px;display:inline-block;">
+                    <img src="' . $logo_url . '" alt="NAM Builders" height="36"
+                         style="height:36px;width:auto;display:block;vertical-align:middle;"
+                         onerror="this.style.display=\'none\'">
+                  </td>
+                </tr>
+              </table>
+              <!-- Title -->
+              <h1 style="color:#FFFFFF;margin:0 0 6px;font-size:24px;font-weight:800;letter-spacing:-0.3px;line-height:1.2;">
+                New Website Inquiry
+              </h1>
+              <p style="color:rgba(255,255,255,0.75);margin:0;font-size:13px;">
+                ' . $received_day . ', ' . $received_date . ' &nbsp;&bull;&nbsp; ' . $received_time . ' (Philippine Time)
+              </p>
+            </td>
+            <!-- Decorative circle -->
+            <td style="padding:0 36px 0 0;vertical-align:bottom;text-align:right;width:80px;">
+              <div style="width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,0.08);display:inline-block;"></div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- ── ALERT BANNER ── -->
+    <tr>
+      <td style="background:#FFFBEB;border-left:4px solid #F59E0B;padding:14px 36px;">
+        <p style="margin:0;color:#92400E;font-size:13px;font-weight:600;line-height:1.5;">
+          You have a new message from your website. Review it in the admin panel and reply directly to the sender.
+        </p>
+      </td>
+    </tr>
+
+    <!-- ── SENDER DETAILS ── -->
+    <tr>
+      <td style="padding:28px 36px 8px;">
+        <p style="margin:0 0 14px;font-size:11px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:#1565C0;border-bottom:2px solid #E2E8F0;padding-bottom:10px;">
+          Sender Information
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E2E8F0;border-radius:10px;overflow:hidden;">
+          <tr>
+            <td style="padding:12px 20px;font-size:13px;font-weight:600;color:#64748B;background:#F8FAFC;border-bottom:1px solid #E2E8F0;width:130px;vertical-align:top;">Full Name</td>
+            <td style="padding:12px 20px;font-size:13px;font-weight:700;color:#0F172A;border-bottom:1px solid #E2E8F0;vertical-align:top;">' . htmlspecialchars($full_name) . '</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 20px;font-size:13px;font-weight:600;color:#64748B;background:#F8FAFC;border-bottom:1px solid #E2E8F0;vertical-align:top;">Email</td>
+            <td style="padding:12px 20px;border-bottom:1px solid #E2E8F0;vertical-align:top;">
+              <a href="mailto:' . htmlspecialchars($email) . '" style="color:#1565C0;font-size:13px;font-weight:600;text-decoration:none;">' . htmlspecialchars($email) . '</a>
+            </td>
+          </tr>
+          ' . $phone_row . '
+          ' . $service_row . '
+          <tr>
+            <td style="padding:12px 20px;font-size:13px;font-weight:600;color:#64748B;background:#F8FAFC;vertical-align:top;">Received</td>
+            <td style="padding:12px 20px;font-size:13px;color:#0F172A;vertical-align:top;">' . $received_day . ', ' . $received_date . ' at ' . $received_time . '</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- ── CTA BUTTON ── -->
+    <tr>
+      <td style="padding:24px 36px 32px;text-align:center;">
+        <p style="margin:0 0 16px;font-size:13px;color:#64748B;">
+          The full message is available in your admin panel.
+        </p>
+        <a href="' . $admin_url . '"
+           style="display:inline-block;background:linear-gradient(135deg,#1565C0,#1976D2);color:#FFFFFF;text-decoration:none;padding:14px 36px;border-radius:8px;font-size:15px;font-weight:700;letter-spacing:0.02em;box-shadow:0 4px 14px rgba(21,101,192,0.35);">
+          View Message in Admin Panel
+        </a>
+      </td>
+    </tr>
+
+    <!-- ── DIVIDER ── -->
+    <tr>
+      <td style="padding:0 36px;"><hr style="border:none;border-top:1px solid #E2E8F0;margin:0;"></td>
+    </tr>
+
+    <!-- ── FOOTER ── -->
+    <tr>
+      <td style="padding:18px 36px 24px;text-align:center;">
+        <p style="margin:0 0 4px;font-size:12px;color:#94A3B8;font-weight:600;">
+          NAM Builders and Supply Corp.
+        </p>
+        <p style="margin:0;font-size:11px;color:#CBD5E1;">
+          RNA Building Brgy. Santiago Malvar, Batangas &nbsp;&bull;&nbsp; nam.nswt@myahoo.com
+        </p>
+        <p style="margin:8px 0 0;font-size:11px;color:#CBD5E1;">
+          &copy; ' . date('Y') . ' NAM Builders and Supply Corp. This is an automated notification.
+        </p>
+      </td>
+    </tr>
+
   </table>
+  <!-- /Card -->
+
+</td></tr>
+</table>
+
 </body>
 </html>';
-                $mail->AltBody = "New inquiry from: $full_name\nEmail: $email\nPhone: $phone\nService: $service_needed\n\nMessage:\n$message\n\nView in admin: " . BASE_URL . "admin/dashboard.php?page=messages";
+
+                $mail->AltBody = "New inquiry from: {$full_name}\nEmail: {$email}\nPhone: {$phone}\nService: {$service_needed}\nReceived: {$received_day}, {$received_date} at {$received_time} (Philippine Time)\n\nView in admin: {$admin_url}";
+
                 $mail->send();
             } catch (\Exception $mailEx) {
-                // Silently fail — don't block form submission if admin email fails
                 error_log('Admin notification email failed: ' . $mailEx->getMessage());
             }
         }

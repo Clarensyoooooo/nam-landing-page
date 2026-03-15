@@ -159,3 +159,7 @@ INSERT IGNORE INTO site_stats (stat_key, label, value, suffix, sort_order) VALUE
   ('happy_clients',      'Happy Clients',       50, '+', 2),
   ('years_experience',   'Years Experience',    15, '+', 3),
   ('service_categories', 'Service Categories',   6, '',  4);
+
+  -- Run this in your database to add the replied status
+USE nam_builders;
+ALTER TABLE contact_messages ADD COLUMN is_replied TINYINT(1) DEFAULT 0 AFTER is_read;

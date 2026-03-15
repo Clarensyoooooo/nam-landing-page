@@ -14,7 +14,7 @@ try {
     $values   = $_POST['values']   ?? [];
     $suffixes = $_POST['suffixes'] ?? [];
     $orders   = $_POST['orders']   ?? [];
-    $actives  = $_POST['actives']  ?? [];   // checkboxes: only present when checked
+    $actives  = $_POST['actives']  ?? [];
 
     if (empty($ids)) throw new Exception('No stats data received.');
 
@@ -26,15 +26,18 @@ try {
 
     foreach ($ids as $i => $id) {
         $id        = intval($id);
-        $label     = sanitize($labels[$i]   ?? '');
-        $value     = intval($values[$i]     ?? 0);
-        $suffix    = trim($suffixes[$i]     ?? '');   /* trim only — sanitize strips + */
-        $order     = intval($orders[$i]     ?? $i);
+        $label     = sanitize($labels[$i] ?? '');
+        $value     = intval($values[$i]   ?? 0);
+
+        // Use strip_tags only — NOT sanitize() which converts + to &#43; etc.
+        $suffix    = strip_tags(trim($suffixes[$i] ?? ''));
+
+        $order     = intval($orders[$i]   ?? $i);
         $is_active = isset($actives[$id]) ? 1 : 0;
 
         if (empty($label)) continue;
 
-        $stmt->bind_param('siisii', $label, $value, $suffix, $order, $is_active, $id);
+        $stmt->bind_param('sissii', $label, $value, $suffix, $order, $is_active, $id);
         if (!$stmt->execute()) throw new Exception($stmt->error);
     }
 

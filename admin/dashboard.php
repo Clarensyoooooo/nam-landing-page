@@ -75,7 +75,7 @@ if ($result) {
                  style="height:36px;width:auto;object-fit:contain;flex-shrink:0;"
                  onerror="this.style.display='none'">
             <div>
-                <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:.95rem;color:#fff;line-height:1.2;">NAM Builders</div>
+                <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:.95rem;color:#fff;line-height:1.2;">NAM Builders and Supply Corp</div>
                 <div style="font-size:.68rem;color:rgba(255,255,255,.7);font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Admin Panel</div>
             </div>
             <button id="sidebarCloseBtn"

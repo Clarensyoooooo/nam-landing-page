@@ -73,6 +73,17 @@ displayAlert();
     transform:translateY(-1px); box-shadow:0 6px 18px rgba(220,53,69,.35);
 }
 
+/* ══ Status badges ══ */
+.status-badge {
+    display: inline-flex; align-items: center; gap: .32rem;
+    padding: .25rem .7rem; border-radius: 50px;
+    font-size: .72rem; font-weight: 800; white-space: nowrap;
+}
+.status-badge.unread   { background: #FEF9C3; color: #854D0E; border: 1px solid #FDE68A; }
+.status-badge.read     { background: #D1FAE5; color: #065F46; border: 1px solid #6EE7B7; }
+.status-badge.replied  { background: #EFF6FF; color: #1D4ED8; border: 1px solid #93C5FD; }
+.status-badge i { font-size: .65rem; }
+
 /* ══ Message Details Modal ══ */
 .msg-modal-overlay {
     display: none; position: fixed; inset: 0;
@@ -129,8 +140,9 @@ displayAlert();
 .mm-meta-chip i { color: #1565C0; font-size: .72rem; }
 .mm-meta-chip.svc-chip { background: #FEF9C3; border-color: #FDE68A; color: #92400E; }
 .mm-meta-chip.svc-chip i { color: #D97706; }
-.mm-status-chip.unread { background: #EFF6FF; border-color: #93C5FD; color: #1D4ED8; }
-.mm-status-chip.read   { background: #D1FAE5; border-color: #6EE7B7; color: #065F46; }
+.mm-status-chip.unread  { background: #FEF9C3; border-color: #FDE68A; color: #854D0E; }
+.mm-status-chip.read    { background: #D1FAE5; border-color: #6EE7B7; color: #065F46; }
+.mm-status-chip.replied { background: #EFF6FF; border-color: #93C5FD; color: #1D4ED8; }
 .mm-body { overflow-y: auto; flex: 1; padding: 1.6rem 1.8rem; }
 .mm-field-label {
     font-size: .7rem; font-weight: 800; letter-spacing: .1em;
@@ -197,9 +209,30 @@ displayAlert();
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: .75rem;">
     <h2 style="margin:0;">Contact Messages</h2>
-    <div class="msg-search-wrap">
-        <i class="fas fa-search"></i>
-        <input type="text" id="msgSearchInput" placeholder="Search messages…" oninput="filterMessages(this.value)">
+    <div style="display:flex; align-items:center; gap:.75rem; flex-wrap:wrap;">
+        <!-- Filter tabs -->
+        <div style="display:flex; gap:.35rem;">
+            <button class="msg-filter-btn active" data-filter="all" onclick="filterByStatus(this,'all')"
+                style="padding:.38rem .85rem;border-radius:50px;border:1.5px solid var(--border-color);background:#fff;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;">
+                All <span id="countAll" style="opacity:.6;"></span>
+            </button>
+            <button class="msg-filter-btn" data-filter="unread" onclick="filterByStatus(this,'unread')"
+                style="padding:.38rem .85rem;border-radius:50px;border:1.5px solid #FDE68A;background:#FEF9C3;color:#854D0E;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;">
+                Unread <span id="countUnread" style="opacity:.7;"></span>
+            </button>
+            <button class="msg-filter-btn" data-filter="read" onclick="filterByStatus(this,'read')"
+                style="padding:.38rem .85rem;border-radius:50px;border:1.5px solid #6EE7B7;background:#D1FAE5;color:#065F46;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;">
+                Read <span id="countRead" style="opacity:.7;"></span>
+            </button>
+            <button class="msg-filter-btn" data-filter="replied" onclick="filterByStatus(this,'replied')"
+                style="padding:.38rem .85rem;border-radius:50px;border:1.5px solid #93C5FD;background:#EFF6FF;color:#1D4ED8;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;">
+                Replied <span id="countReplied" style="opacity:.7;"></span>
+            </button>
+        </div>
+        <div class="msg-search-wrap">
+            <i class="fas fa-search"></i>
+            <input type="text" id="msgSearchInput" placeholder="Search messages…" oninput="filterMessages(this.value)">
+        </div>
     </div>
 </div>
 
@@ -218,22 +251,39 @@ displayAlert();
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($messages as $message): ?>
-                    <tr data-search="<?php echo strtolower(htmlspecialchars(
-                        $message['full_name'] . ' ' .
-                        $message['email']     . ' ' .
-                        $message['phone']     . ' ' .
-                        $message['service_needed'] . ' ' .
-                        $message['message']
-                    )); ?>">
+                <?php foreach ($messages as $message):
+                    // Determine status
+                    if ($message['is_replied']) {
+                        $statusKey   = 'replied';
+                        $statusLabel = 'Replied';
+                        $statusIcon  = 'fa-reply';
+                    } elseif ($message['is_read']) {
+                        $statusKey   = 'read';
+                        $statusLabel = 'Read';
+                        $statusIcon  = 'fa-check';
+                    } else {
+                        $statusKey   = 'unread';
+                        $statusLabel = 'Unread';
+                        $statusIcon  = 'fa-circle';
+                    }
+                ?>
+                    <tr data-status="<?php echo $statusKey; ?>"
+                        data-search="<?php echo strtolower(htmlspecialchars(
+                            $message['full_name'] . ' ' .
+                            $message['email']     . ' ' .
+                            $message['phone']     . ' ' .
+                            $message['service_needed'] . ' ' .
+                            $message['message']
+                        )); ?>">
                         <td><?php echo sanitize($message['full_name']); ?></td>
                         <td><?php echo sanitize($message['email']); ?></td>
                         <td><?php echo sanitize($message['phone'] ?? 'N/A'); ?></td>
                         <td><?php echo sanitize($message['service_needed'] ?? 'General'); ?></td>
                         <td><?php echo formatDate($message['created_at']); ?></td>
                         <td>
-                            <span class="badge" style="background-color: <?php echo !$message['is_read'] ? '#FFC107' : '#28A745'; ?>;">
-                                <?php echo !$message['is_read'] ? 'Unread' : 'Read'; ?>
+                            <span class="status-badge <?php echo $statusKey; ?>">
+                                <i class="fas <?php echo $statusIcon; ?>"></i>
+                                <?php echo $statusLabel; ?>
                             </span>
                         </td>
                         <td>
@@ -329,20 +379,53 @@ displayAlert();
 var currentMessageId = null;
 var _msgDeleteId     = null;
 
+/* ── Count badges on load ── */
+(function countBadges() {
+    var rows = document.querySelectorAll('#messagesTable tbody tr:not(#msgNoResults)');
+    var counts = { all: 0, unread: 0, read: 0, replied: 0 };
+    rows.forEach(function(r) {
+        var s = r.getAttribute('data-status');
+        counts.all++;
+        if (counts[s] !== undefined) counts[s]++;
+    });
+    document.getElementById('countAll').textContent     = '(' + counts.all + ')';
+    document.getElementById('countUnread').textContent  = '(' + counts.unread + ')';
+    document.getElementById('countRead').textContent    = '(' + counts.read + ')';
+    document.getElementById('countReplied').textContent = '(' + counts.replied + ')';
+}());
+
+/* ── Status filter ── */
+var _currentFilter = 'all';
+function filterByStatus(btn, filter) {
+    _currentFilter = filter;
+    document.querySelectorAll('.msg-filter-btn').forEach(function(b) {
+        b.style.outline = '';
+        b.style.boxShadow = '';
+    });
+    btn.style.boxShadow = '0 0 0 2px var(--primary-color)';
+    applyFilters();
+}
+
 /* ── Search ── */
 function filterMessages(query) {
-    var q = query.toLowerCase().trim();
+    applyFilters(query);
+}
+
+function applyFilters(query) {
+    query = (query || document.getElementById('msgSearchInput').value).toLowerCase().trim();
     var rows = document.querySelectorAll('#messagesTable tbody tr:not(#msgNoResults)');
     var visible = 0;
     rows.forEach(function(row) {
-        var show = q === '' || (row.getAttribute('data-search') || '').includes(q);
+        var matchSearch  = query === '' || (row.getAttribute('data-search') || '').includes(query);
+        var matchStatus  = _currentFilter === 'all' || row.getAttribute('data-status') === _currentFilter;
+        var show = matchSearch && matchStatus;
         row.style.display = show ? '' : 'none';
         if (show) visible++;
     });
     document.getElementById('msgNoResults').style.display = visible === 0 ? '' : 'none';
 }
 
-/* ── Delete confirm modal ── */
+/* ── Delete confirm ── */
 function openMsgDeleteConfirm(id, name) {
     _msgDeleteId = id;
     document.getElementById('deleteMsgName').textContent = '"' + name + '"';
@@ -371,18 +454,30 @@ function viewMessage(id) {
             if (!data.success) { alert('Could not load message.'); return; }
             var msg = data.data;
 
-            document.getElementById('mmAvatar').textContent    = (msg.full_name || '?').trim().charAt(0).toUpperCase();
-            document.getElementById('mmName').textContent      = msg.full_name || '—';
-            document.getElementById('mmEmailSub').textContent  = msg.email || '—';
+            document.getElementById('mmAvatar').textContent   = (msg.full_name || '?').trim().charAt(0).toUpperCase();
+            document.getElementById('mmName').textContent     = msg.full_name || '—';
+            document.getElementById('mmEmailSub').textContent = msg.email || '—';
             document.getElementById('mmReplyToTag').textContent = msg.email || '—';
 
-            var date   = new Date(msg.created_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
-            var isRead = msg.is_read == 1;
-            var chips  = '<span class="mm-meta-chip mm-status-chip ' + (isRead ? 'read' : 'unread') + '">'
-                       + '<i class="fas fa-' + (isRead ? 'check-circle' : 'circle') + '" style="font-size:.65rem;"></i> '
-                       + (isRead ? 'Read' : 'Unread') + '</span>'
-                       + '<span class="mm-meta-chip"><i class="fas fa-clock"></i> ' + escHtml(date) + '</span>'
-                       + '<span class="mm-meta-chip"><i class="fas fa-envelope"></i> ' + escHtml(msg.email) + '</span>';
+            var date    = new Date(msg.created_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+            var isRead  = msg.is_read == 1;
+            var isReplied = msg.is_replied == 1;
+
+            /* Status chip */
+            var statusClass, statusIcon, statusLabel;
+            if (isReplied) {
+                statusClass = 'replied'; statusIcon = 'fa-reply'; statusLabel = 'Replied';
+            } else if (isRead) {
+                statusClass = 'read'; statusIcon = 'fa-check'; statusLabel = 'Read';
+            } else {
+                statusClass = 'unread'; statusIcon = 'fa-circle'; statusLabel = 'Unread';
+            }
+
+            var chips = '<span class="mm-meta-chip mm-status-chip ' + statusClass + '">'
+                      + '<i class="fas ' + statusIcon + '" style="font-size:.65rem;"></i> '
+                      + statusLabel + '</span>'
+                      + '<span class="mm-meta-chip"><i class="fas fa-clock"></i> ' + escHtml(date) + '</span>'
+                      + '<span class="mm-meta-chip"><i class="fas fa-envelope"></i> ' + escHtml(msg.email) + '</span>';
             if (msg.phone)
                 chips += '<span class="mm-meta-chip"><i class="fas fa-phone"></i> ' + escHtml(msg.phone) + '</span>';
             if (msg.service_needed)
@@ -393,13 +488,14 @@ function viewMessage(id) {
             document.getElementById('messageModal').classList.add('active');
             document.body.style.overflow = 'hidden';
 
-            // Update badge in table row to Read
+            /* Update row badge in table */
             document.querySelectorAll('#messagesTable tbody tr').forEach(function(row) {
                 if (row.querySelector('[onclick="viewMessage(' + id + ')"]')) {
-                    var badge = row.querySelector('.badge');
-                    if (badge && badge.textContent.trim() === 'Unread') {
-                        badge.textContent = 'Read';
-                        badge.style.backgroundColor = '#28A745';
+                    var badge = row.querySelector('.status-badge');
+                    if (badge && badge.classList.contains('unread')) {
+                        badge.className = 'status-badge read';
+                        badge.innerHTML = '<i class="fas fa-check"></i> Read';
+                        row.setAttribute('data-status', 'read');
                     }
                 }
             });
@@ -427,7 +523,7 @@ function sendReply() {
 
     var fd = new FormData();
     fd.append('message_id', currentMessageId);
-    fd.append('reply_body',  body);
+    fd.append('reply_body', body);
 
     fetch('../backend/reply_message.php', { method: 'POST', body: fd })
         .then(function(r) { return r.text(); })
@@ -439,6 +535,26 @@ function sendReply() {
                 if (data.success) {
                     showReplyAlert(escHtml(data.message), 'success');
                     document.getElementById('mmReplyTextarea').value = '';
+
+                    /* Update row badge to Replied */
+                    document.querySelectorAll('#messagesTable tbody tr').forEach(function(row) {
+                        if (row.querySelector('[onclick="viewMessage(' + currentMessageId + ')"]')) {
+                            var badge = row.querySelector('.status-badge');
+                            if (badge) {
+                                badge.className = 'status-badge replied';
+                                badge.innerHTML = '<i class="fas fa-reply"></i> Replied';
+                                row.setAttribute('data-status', 'replied');
+                            }
+                        }
+                    });
+
+                    /* Update chip inside modal */
+                    var chips = document.getElementById('mmMetaRow');
+                    var statusChip = chips.querySelector('.mm-status-chip');
+                    if (statusChip) {
+                        statusChip.className = 'mm-meta-chip mm-status-chip replied';
+                        statusChip.innerHTML = '<i class="fas fa-reply" style="font-size:.65rem;"></i> Replied';
+                    }
                 } else {
                     showReplyAlert(escHtml(data.message), 'error');
                 }

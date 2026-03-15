@@ -1,87 +1,189 @@
 /* ════════════════════════════════════════════════════════════════
-   updates.js  —  row-group expand strategy
-   Cards are grouped into rows of 3 inside .upd-row wrappers.
-   Clicking a card:
-     1. Collapses any open card.
-     2. Expands that card to 2-col, moves it FIRST in its row-wrapper.
-     3. One sibling sits in the 2nd slot; the other is hidden.
-     4. Row switches to 2-col grid (2fr 1fr).
-   Collapsing restores original 3-col order.
+   updates.js
+
+   RULES:
+   1. All posts always visible.
+   2. Normal layout: rows of 3.
+   3. When a card is clicked it expands IN PLACE (stays in its row).
+   4. That row becomes: [ expanded card (span 2) ] [ next post ]
+   5. The post that was originally beside the expanded card in that
+      row gets pushed down to the NEXT row, joining the cards below.
+   6. "Next post" = index + 1, wraps to index 0 if last post.
+
+   Example (6 posts, 2 rows):
+   Normal:
+     row1: [p1][p2][p3]
+     row2: [p4][p5][p6]
+
+   Click p1 (row1, idx0):  neighbour = p2
+     row1: [p1 expanded][p2]       ← p3 pushed down
+     row2: [p3][p4][p5]            ← p3 joins existing row2 cards
+     row3: [p6]
+
+   Click p4 (row2, idx3):  neighbour = p5
+     row1: [p1][p2][p3]            ← row1 unchanged
+     row2: [p4 expanded][p5]       ← p6 pushed down
+     row3: [p6]
+
+   Click p6 (row2, idx5):  neighbour = p1 (wrap)
+     row1: [p2][p3][p4]            ← p1 moved out of row1
+     row2: [p6 expanded][p1]       ← p5 pushed down
+     row3: [p5]
    ════════════════════════════════════════════════════════════════ */
 (function () {
 
-    var outerGrid  = document.getElementById('updGrid');
-    var toggleLabel = document.getElementById('updToggleLabel');
-    var toggleIcon  = document.getElementById('updToggleIcon');
-    var toggleWrap  = document.getElementById('updToggleWrap');
-    var seeAllBtn   = document.getElementById('updSeeAllBtn');
-
+    var outerGrid = document.getElementById('updGrid');
     if (!outerGrid) return;
 
-    /* ── State ── */
-    var activeCard   = null;
-    var activeRow    = null;
-    var rowOrigOrder = [];   // original card order before expand
-    var curSlide     = 0;
-    var totalSlides  = 0;
-    var slideEls     = [];
-    var dotEls       = [];
-    var showingAll   = false;
-    var hiddenCards  = [];   // cards initially hidden
+    var allCards    = [];   /* original ordered list, never changes */
+    var activeCard  = null;
+    var curSlide    = 0;
+    var totalSlides = 0;
+    var slideEls    = [];
+    var dotEls      = [];
 
-    /* ────────────────────────────────────────────────
-       Build .upd-row wrappers from the flat card list
-    ──────────────────────────────────────────────── */
-    function buildRows() {
-        /* collect all direct card children */
-        var cards = Array.from(outerGrid.querySelectorAll(':scope > .upd-card'));
-        hiddenCards = cards.filter(function (c) { return c.classList.contains('upd-card-hidden'); });
+    /* ── INIT ── */
+    function init() {
+        allCards = Array.from(outerGrid.querySelectorAll(':scope > .upd-card'));
+        allCards.forEach(function (c) {
+            c.classList.remove('upd-card-hidden', 'upd-show');
+            c.style.display = '';
+            ensurePanels(c);
+            c.addEventListener('click', function () { toggleCard(c); });
+            c.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCard(c); }
+            });
+        });
+        var tw = document.getElementById('updToggleWrap');
+        var sa = document.getElementById('updSeeAllBtn');
+        if (tw) tw.style.display = 'none';
+        if (sa) sa.style.display = 'none';
+        renderGrid();
+    }
 
-        /* clear outer grid */
+    /* ════════════════════════════════════════════════════════════
+       RENDER GRID
+    ════════════════════════════════════════════════════════════ */
+    function renderGrid() {
         outerGrid.innerHTML = '';
 
-        /* chunk into groups of 3 */
-        var visible = cards.filter(function (c) { return !c.classList.contains('upd-card-hidden'); });
-        var hidden  = cards.filter(function (c) { return  c.classList.contains('upd-card-hidden'); });
-
-        function makeRows(list) {
-            for (var i = 0; i < list.length; i += 3) {
-                var row = document.createElement('div');
-                row.className = 'upd-row';
-                var chunk = list.slice(i, i + 3);
+        /* ── No active card: plain rows of 3 ── */
+        if (!activeCard) {
+            chunkIntoRows(allCards, 3).forEach(function (chunk) {
+                var row = makeRow('upd-row');
                 chunk.forEach(function (c) { row.appendChild(c); });
                 outerGrid.appendChild(row);
+            });
+            return;
+        }
+
+        var n         = allCards.length;
+        var activeIdx = allCards.indexOf(activeCard);
+
+        /* Next post (neighbour) — wraps around */
+        var neighbourIdx = (activeIdx + 1) % n;
+        var neighbour    = allCards[neighbourIdx];
+
+        /* Which row (0-based) does the active card normally live in? */
+        var activeRow = Math.floor(activeIdx / 3);
+
+        /* Build a flat ordered list WITHOUT active and neighbour */
+        var others = allCards.filter(function (c) {
+            return c !== activeCard && c !== neighbour;
+        });
+
+        /* Split others into: those that belong BEFORE active's row,
+           and those that belong IN or AFTER active's row.
+           "Before" = their original row index < activeRow            */
+        var before = [];
+        var after  = [];
+        others.forEach(function (c) {
+            var origIdx = allCards.indexOf(c);
+            var origRow = Math.floor(origIdx / 3);
+            if (origRow < activeRow) {
+                before.push(c);
+            } else {
+                after.push(c);
             }
-        }
+        });
 
-        makeRows(visible);
+        /* ── Rows BEFORE active row: unchanged 3-col ── */
+        chunkIntoRows(before, 3).forEach(function (chunk) {
+            var row = makeRow('upd-row');
+            chunk.forEach(function (c) { row.appendChild(c); });
+            outerGrid.appendChild(row);
+        });
 
-        /* append hidden cards in a hidden-holding row (won't display) */
-        if (hidden.length) {
-            hidden.forEach(function (c) { outerGrid.appendChild(c); });
-        }
+        /* ── Active row: expanded card + neighbour ── */
+        var activeRowEl = makeRow('upd-row upd-row-has-active');
+        activeRowEl.appendChild(activeCard);
+        activeRowEl.appendChild(neighbour);
+        outerGrid.appendChild(activeRowEl);
 
-        /* wire up all visible cards */
-        visible.forEach(bindCard);
-
-        if (hidden.length > 0 && toggleWrap) toggleWrap.style.display = 'flex';
+        /* ── Rows AFTER active row: remaining cards in 3-col ── */
+        chunkIntoRows(after, 3).forEach(function (chunk) {
+            var row = makeRow('upd-row');
+            chunk.forEach(function (c) { row.appendChild(c); });
+            outerGrid.appendChild(row);
+        });
     }
 
-    /* ────────────────────────────────────────────────
-       Slide helpers
-    ──────────────────────────────────────────────── */
-    function goSlide(idx) {
-        if (!slideEls.length) return;
-        slideEls[curSlide].classList.remove('active');
-        if (dotEls[curSlide]) dotEls[curSlide].classList.remove('active');
-        curSlide = ((idx % totalSlides) + totalSlides) % totalSlides;
-        slideEls[curSlide].classList.add('active');
-        if (dotEls[curSlide]) dotEls[curSlide].classList.add('active');
+    function chunkIntoRows(arr, size) {
+        var rows = [];
+        for (var i = 0; i < arr.length; i += size) {
+            rows.push(arr.slice(i, i + size));
+        }
+        return rows;
     }
 
-    /* ────────────────────────────────────────────────
-       Build expanded content inside card
-    ──────────────────────────────────────────────── */
+    function makeRow(cls) {
+        var el = document.createElement('div');
+        el.className = cls;
+        return el;
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       TOGGLE / EXPAND / COLLAPSE
+    ════════════════════════════════════════════════════════════ */
+    function toggleCard(card) {
+        if (activeCard === card) {
+            collapseCard();
+        } else {
+            if (activeCard) collapseCard(true);
+            expandCard(card);
+        }
+    }
+
+    function expandCard(card) {
+        activeCard = card;
+        card.classList.add('upd-active');
+        injectExpandContent(card);
+        renderGrid();
+        setTimeout(function () {
+            card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 80);
+    }
+
+    function collapseCard(silent) {
+        if (!activeCard) return;
+        var card = activeCard;
+
+        var imgSide  = card.querySelector('.updx-img-side');
+        var textSide = card.querySelector('.updx-text-side');
+        if (imgSide)  imgSide.innerHTML  = '';
+        if (textSide) textSide.innerHTML = '';
+
+        card.classList.remove('upd-active');
+        activeCard  = null;
+        slideEls    = []; dotEls = [];
+        curSlide    = 0;  totalSlides = 0;
+
+        if (!silent) renderGrid();
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       INJECT EXPANDED CONTENT
+    ════════════════════════════════════════════════════════════ */
     function injectExpandContent(card) {
         var title = card.getAttribute('data-title') || '';
         var desc  = card.getAttribute('data-desc')  || '';
@@ -98,14 +200,15 @@
         imgSide.innerHTML  = '';
         textSide.innerHTML = '';
 
-        /* slides */
+        /* Slides */
         var slidesWrap = document.createElement('div');
         slidesWrap.className = 'updx-slides';
         imgs.forEach(function (src, i) {
             var slide = document.createElement('div');
             slide.className = 'updx-slide' + (i === 0 ? ' active' : '');
             if (src) {
-                var img = document.createElement('img'); img.src = src; img.alt = title;
+                var img = document.createElement('img');
+                img.src = src; img.alt = title;
                 slide.appendChild(img);
             } else {
                 var ph = document.createElement('div');
@@ -118,28 +221,23 @@
         });
         imgSide.appendChild(slidesWrap);
 
-        /* date badge */
         var db = document.createElement('div');
         db.className = 'updx-date-badge';
         db.innerHTML = '<i class="fas fa-calendar-alt"></i>' + date;
         imgSide.appendChild(db);
 
-        /* arrows + dots (multi-image only) */
         if (imgs.length > 1) {
-            var prev = document.createElement('button');
-            prev.className = 'updx-arrow updx-arrow-prev';
-            prev.setAttribute('aria-label', 'Previous');
-            prev.innerHTML = '<i class="fas fa-chevron-left"></i>';
-            prev.addEventListener('click', function (e) { e.stopPropagation(); goSlide(curSlide - 1); });
-
-            var nxt = document.createElement('button');
-            nxt.className = 'updx-arrow updx-arrow-next';
-            nxt.setAttribute('aria-label', 'Next');
-            nxt.innerHTML = '<i class="fas fa-chevron-right"></i>';
-            nxt.addEventListener('click', function (e) { e.stopPropagation(); goSlide(curSlide + 1); });
-
-            imgSide.appendChild(prev);
-            imgSide.appendChild(nxt);
+            ['prev', 'next'].forEach(function (dir) {
+                var btn = document.createElement('button');
+                btn.className = 'updx-arrow updx-arrow-' + dir;
+                btn.setAttribute('aria-label', dir === 'prev' ? 'Previous' : 'Next');
+                btn.innerHTML = '<i class="fas fa-chevron-' + (dir === 'prev' ? 'left' : 'right') + '"></i>';
+                btn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    goSlide(dir === 'prev' ? curSlide - 1 : curSlide + 1);
+                });
+                imgSide.appendChild(btn);
+            });
 
             var dotsWrap = document.createElement('div');
             dotsWrap.className = 'updx-img-dots';
@@ -156,15 +254,14 @@
             imgSide.appendChild(dotsWrap);
         }
 
-        /* title */
         var titleEl = document.createElement('h2');
-        titleEl.className = 'updx-title'; titleEl.textContent = title;
+        titleEl.className = 'updx-title';
+        titleEl.textContent = title;
 
-        /* desc */
         var descEl = document.createElement('p');
-        descEl.className = 'updx-desc'; descEl.textContent = desc;
+        descEl.className = 'updx-desc';
+        descEl.textContent = desc;
 
-        /* close btn */
         var closeBtn = document.createElement('button');
         closeBtn.className = 'updx-close-btn';
         closeBtn.innerHTML = '<i class="fas fa-times"></i> Close';
@@ -175,132 +272,26 @@
         textSide.appendChild(closeBtn);
     }
 
-    /* ────────────────────────────────────────────────
-       Expand
-    ──────────────────────────────────────────────── */
-    function expandCard(card) {
-        if (activeCard === card) { collapseCard(); return; }
-        if (activeCard) collapseCard();
-
-        var row = card.parentElement;
-        if (!row || !row.classList.contains('upd-row')) return;
-
-        /* remember original DOM order */
-        rowOrigOrder = Array.from(row.children);
-
-        /* the siblings (cards in the same row that are NOT the active card) */
-        var siblings = rowOrigOrder.filter(function (c) { return c !== card; });
-
-        /* reorder: active card first, then first sibling, hide the rest */
-        row.innerHTML = '';
-        row.appendChild(card);
-        if (siblings[0]) row.appendChild(siblings[0]);
-        /* hide extra siblings (shouldn't happen in 3-col row since we only have 2 siblings,
-           but we show only 1 alongside the expanded card) */
-        if (siblings[1]) {
-            siblings[1].style.display = 'none';
-        }
-
-        injectExpandContent(card);
-
-        activeCard = card;
-        activeRow  = row;
-        card.classList.add('upd-active');
-        row.classList.add('upd-row-expanded');
-
-        setTimeout(function () {
-            card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }, 80);
+    function goSlide(idx) {
+        if (!slideEls.length) return;
+        slideEls[curSlide].classList.remove('active');
+        if (dotEls[curSlide]) dotEls[curSlide].classList.remove('active');
+        curSlide = ((idx % totalSlides) + totalSlides) % totalSlides;
+        slideEls[curSlide].classList.add('active');
+        if (dotEls[curSlide]) dotEls[curSlide].classList.add('active');
     }
 
-    /* ────────────────────────────────────────────────
-       Collapse
-    ──────────────────────────────────────────────── */
-    function collapseCard() {
-        if (!activeCard || !activeRow) return;
-
-        activeCard.classList.remove('upd-active');
-        activeRow.classList.remove('upd-row-expanded');
-
-        /* restore original DOM order */
-        activeRow.innerHTML = '';
-        rowOrigOrder.forEach(function (c) {
-            c.style.display = '';
-            activeRow.appendChild(c);
-        });
-
-        /* clear expanded content */
-        var imgSide  = activeCard.querySelector('.updx-img-side');
-        var textSide = activeCard.querySelector('.updx-text-side');
-        if (imgSide)  imgSide.innerHTML  = '';
-        if (textSide) textSide.innerHTML = '';
-
-        activeCard  = null;
-        activeRow   = null;
-        rowOrigOrder = [];
-        slideEls = []; dotEls = []; curSlide = 0; totalSlides = 0;
-    }
-
-    /* ────────────────────────────────────────────────
-       Bind a card
-    ──────────────────────────────────────────────── */
-    function bindCard(card) {
-        /* inject empty expanded panels if not already there */
+    function ensurePanels(card) {
         if (!card.querySelector('.updx-img-side')) {
-            var imgSide  = document.createElement('div'); imgSide.className  = 'updx-img-side';
-            var textSide = document.createElement('div'); textSide.className = 'updx-text-side';
+            var imgSide  = document.createElement('div');
+            imgSide.className  = 'updx-img-side';
+            var textSide = document.createElement('div');
+            textSide.className = 'updx-text-side';
             card.appendChild(imgSide);
             card.appendChild(textSide);
         }
-        card.addEventListener('click', function () { expandCard(card); });
-        card.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); expandCard(card); }
-        });
     }
 
-    /* ────────────────────────────────────────────────
-       Show more / less
-    ──────────────────────────────────────────────── */
-    window.toggleUpdates = function () {
-        showingAll = !showingAll;
-        collapseCard();
-
-        hiddenCards.forEach(function (card) {
-            if (showingAll) {
-                card.classList.remove('upd-card-hidden');
-                card.classList.add('upd-show');
-            } else {
-                card.classList.add('upd-card-hidden');
-                card.classList.remove('upd-show');
-            }
-        });
-
-        /* rebuild rows from scratch */
-        buildRows();
-
-        if (toggleLabel) {
-            toggleLabel.textContent = showingAll
-                ? 'Show Less'
-                : 'Show All ' + (hiddenCards.length + 3) + ' Posts';
-        }
-        if (toggleIcon) {
-            toggleIcon.className = showingAll ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
-        }
-        if (!showingAll && outerGrid) {
-            outerGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-    };
-
-    if (seeAllBtn) {
-        seeAllBtn.addEventListener('click', function () {
-            if (!showingAll) toggleUpdates();
-            setTimeout(function () {
-                outerGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 50);
-        });
-    }
-
-    /* ESC / arrow keys */
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && activeCard) collapseCard();
         if (activeCard) {
@@ -309,7 +300,6 @@
         }
     });
 
-    /* ── INIT ── */
-    buildRows();
+    init();
 
 }());

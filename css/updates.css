@@ -1,5 +1,7 @@
 /* ════════════════════════════════════════════════════════════════
-   UPDATES / POSTS  —  fixed-height cards, smooth expand
+   UPDATES / POSTS
+   Normal:   [ A ][ B ][ C ]  per row
+   Expanded: active card spans 2 cols, stays in its original row
    ════════════════════════════════════════════════════════════════ */
 
 #updates {
@@ -7,11 +9,9 @@
     padding: 60px 0 70px;
 }
 
-/* ── Section header — centered ── */
 .upd-section-header {
     text-align: center;
     margin-bottom: 2rem;
-    display: block;
 }
 .upd-section-title {
     font-family: 'Barlow Condensed', sans-serif;
@@ -24,76 +24,70 @@
     color: var(--text-light); font-size: .95rem;
     margin: 0 auto; line-height: 1.65; max-width: 520px;
 }
-.upd-see-all-btn {
-    display: inline-flex; align-items: center; gap: .45rem;
-    background: transparent; border: 1.5px solid var(--primary-color);
-    color: var(--primary-color); padding: .5rem 1.1rem; border-radius: 50px;
-    font-size: .82rem; font-weight: 700; font-family: 'Barlow', sans-serif;
-    cursor: pointer; margin-top: 1rem;
-    transition: background .22s, color .22s, transform .2s, box-shadow .2s;
-}
-.upd-see-all-btn:hover {
-    background: var(--primary-color); color: #fff;
-    transform: translateY(-2px); box-shadow: 0 6px 18px rgba(21,101,192,.25);
-}
-.upd-see-all-btn .fa-arrow-right { font-size: .72rem; transition: transform .25s; }
-.upd-see-all-btn:hover .fa-arrow-right { transform: translateX(3px); }
 
-/* ── Grid / row groups ── */
-.upd-grid { display: flex; flex-direction: column; gap: 1.2rem; }
+.upd-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+}
+
+/* ── Every row is a 3-col grid ── */
 .upd-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1.2rem;
-    align-items: stretch;
-    transition: grid-template-columns .42s cubic-bezier(.22,.68,0,1.1);
+    align-items: start;
 }
-.upd-row.upd-row-expanded { grid-template-columns: 2fr 1fr; }
-.upd-card-hidden { display: none !important; }
-.upd-card-hidden.upd-show { display: block !important; }
+
+/* Active card spans 2 of the 3 columns */
+.upd-row-has-active .upd-card.upd-active {
+    grid-column: span 2;
+}
 
 /* ════════════════════════════════════════════════════════════════
-   CARD — collapsed: full-bleed portrait image, fixed height
+   CARD — portrait collapsed
    ════════════════════════════════════════════════════════════════ */
 .upd-card {
     cursor: pointer;
-    border-radius: 12px; overflow: hidden;
+    border-radius: 12px;
+    overflow: hidden;
     position: relative;
     height: 380px;
     background: #111;
     box-shadow: 0 3px 16px rgba(0,0,0,.12);
-    transition: transform .3s cubic-bezier(.22,.68,0,1.1),
-                box-shadow .3s ease;
-    flex-shrink: 0;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 .upd-card:hover:not(.upd-active) {
     transform: translateY(-5px);
-    box-shadow: 0 14px 36px rgba(0,0,0,.18);
+    box-shadow: 0 14px 36px rgba(0,0,0,.2);
 }
 
-/* ── EXPANDED STATE — smooth crossfade ── */
+/* ════════════════════════════════════════════════════════════════
+   CARD — expanded horizontal
+   ════════════════════════════════════════════════════════════════ */
 .upd-card.upd-active {
     height: 380px;
-    cursor: default; transform: none !important;
-    box-shadow: 0 6px 28px rgba(0,0,0,.13);
-    display: flex; flex-direction: row;
-    background: #fff; border-radius: 12px; overflow: hidden;
-    animation: updCardOpen .42s cubic-bezier(.22,.68,0,1.1);
+    cursor: default;
+    transform: none !important;
+    display: flex;
+    flex-direction: row;
+    background: #fff;
+    box-shadow: 0 8px 32px rgba(0,0,0,.15);
+    animation: cardOpenIn 0.45s cubic-bezier(.22,.68,0,1.1) both;
 }
-@keyframes updCardOpen {
-    from { opacity: .3; transform: scale(.98); }
-    to   { opacity: 1;  transform: scale(1); }
+@keyframes cardOpenIn {
+    from { opacity: 0.2; transform: scale(.97); }
+    to   { opacity: 1;   transform: scale(1); }
 }
 
-/* ── BG image ── */
 .upd-card-bg {
     position: absolute; inset: 0; z-index: 0; pointer-events: none;
-    transition: opacity .4s ease;
+    transition: opacity 0.4s ease;
 }
 .upd-card.upd-active .upd-card-bg { opacity: 0; pointer-events: none; }
 .upd-card-bg img {
     width: 100%; height: 100%; object-fit: cover; display: block;
-    transition: transform .45s ease;
+    transition: transform .4s ease;
 }
 .upd-card:hover:not(.upd-active) .upd-card-bg img { transform: scale(1.04); }
 .upd-card-bg-placeholder {
@@ -103,30 +97,22 @@
     font-size: 2.8rem; color: rgba(255,255,255,.07);
 }
 
-/* ── DATE badge — top-left, floats with margin from edges ── */
 .upd-date-badge {
-    position: absolute;
-    top: 12px; left: 12px;
-    z-index: 3;
-    background: #fff;
-    border-radius: 6px;
-    padding: .28rem .75rem;
+    position: absolute; top: 12px; left: 12px; z-index: 3;
+    background: #fff; border-radius: 6px; padding: .28rem .75rem;
     font-size: .65rem; font-weight: 700; color: var(--text-dark);
     display: inline-flex; align-items: center; gap: .32rem;
-    box-shadow: 0 2px 12px rgba(0,0,0,.18);
-    pointer-events: none;
-    transition: opacity .35s ease;
-    /* Floating white block — not touching any edge */
+    box-shadow: 0 2px 12px rgba(0,0,0,.18); pointer-events: none;
+    transition: opacity 0.35s ease;
 }
 .upd-date-badge i { color: var(--primary-color); font-size: .58rem; }
 .upd-card.upd-active .upd-date-badge { opacity: 0; pointer-events: none; }
 
-/* ── LEARN MORE hover overlay ── */
 .upd-learn-more {
     position: absolute; inset: 0; z-index: 2;
     display: flex; align-items: center; justify-content: center;
     background: rgba(13,71,161,.38);
-    opacity: 0; transition: opacity .28s ease; pointer-events: none;
+    opacity: 0; transition: opacity .25s ease; pointer-events: none;
 }
 .upd-card:hover:not(.upd-active) .upd-learn-more { opacity: 1; pointer-events: auto; }
 .upd-card.upd-active .upd-learn-more { display: none; }
@@ -138,25 +124,17 @@
     letter-spacing: .1em; text-transform: uppercase;
     padding: .55rem 1.2rem; border-radius: 50px;
     box-shadow: 0 4px 16px rgba(0,0,0,.2);
-    transform: translateY(5px); transition: transform .28s ease;
+    transform: translateY(5px); transition: transform .25s ease;
 }
 .upd-card:hover:not(.upd-active) .upd-learn-more-label { transform: translateY(0); }
-.upd-learn-more-label .fa-arrow-right { font-size: .72rem; transition: transform .22s; }
+.upd-learn-more-label .fa-arrow-right { font-size: .72rem; transition: transform .2s; }
 .upd-card:hover:not(.upd-active) .upd-learn-more-label .fa-arrow-right { transform: translateX(3px); }
 
-/* ── TITLE BAR — bottom, floats with margins on all sides ── */
 .upd-card-bar {
-    position: absolute;
-    bottom: 12px;       /* lift off the bottom edge */
-    left: 12px;         /* margin from left edge */
-    right: 12px;        /* margin from right edge */
-    z-index: 3;
-    background: #fff;
-    border-radius: 8px;
-    padding: .75rem 1rem;
-    pointer-events: none;
-    box-shadow: 0 2px 14px rgba(0,0,0,.18);
-    transition: opacity .35s ease;
+    position: absolute; bottom: 12px; left: 12px; right: 12px; z-index: 3;
+    background: #fff; border-radius: 8px; padding: .75rem 1rem;
+    pointer-events: none; box-shadow: 0 2px 14px rgba(0,0,0,.18);
+    transition: opacity 0.35s ease;
 }
 .upd-card.upd-active .upd-card-bar { opacity: 0; pointer-events: none; }
 .upd-card-title {
@@ -167,23 +145,21 @@
 }
 
 /* ════════════════════════════════════════════════════════════════
-   EXPANDED PANELS — inside active card, smooth slide-in
+   EXPANDED PANELS
    ════════════════════════════════════════════════════════════════ */
 .updx-img-side {
-    flex: 0 0 56%; position: relative; background: #000;
+    flex: 0 0 55%; position: relative; background: #000;
     overflow: hidden; display: none; height: 100%;
+    animation: panelLeft 0.4s 0.06s cubic-bezier(.22,.68,0,1.1) both;
 }
-.upd-card.upd-active .updx-img-side {
-    display: block;
-    animation: updSlideInL .38s cubic-bezier(.22,.68,0,1.1);
-}
-@keyframes updSlideInL {
-    from { opacity: 0; transform: translateX(-16px); }
+.upd-card.upd-active .updx-img-side { display: block; }
+@keyframes panelLeft {
+    from { opacity: 0; transform: translateX(-12px); }
     to   { opacity: 1; transform: translateX(0); }
 }
 
 .updx-slides { position: relative; width: 100%; height: 100%; }
-.updx-slide  { position: absolute; inset: 0; opacity: 0; transition: opacity .38s ease; }
+.updx-slide  { position: absolute; inset: 0; opacity: 0; transition: opacity .35s ease; }
 .updx-slide.active { opacity: 1; }
 .updx-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .updx-slide-placeholder {
@@ -192,27 +168,28 @@
     font-size: 3rem; color: rgba(255,255,255,.07);
 }
 
-/* Date badge inside expanded image — same floating style */
 .updx-date-badge {
     position: absolute; top: 12px; left: 12px; z-index: 5;
-    background: #fff; border-radius: 6px;
-    padding: .28rem .75rem;
+    background: #fff; border-radius: 6px; padding: .28rem .75rem;
     font-size: .65rem; font-weight: 700; color: var(--text-dark);
     display: none; align-items: center; gap: .32rem;
     box-shadow: 0 2px 12px rgba(0,0,0,.18);
+    animation: fadeUp 0.35s 0.38s ease both;
 }
 .updx-date-badge i { color: var(--primary-color); font-size: .58rem; }
 .upd-card.upd-active .updx-date-badge { display: inline-flex; }
 
-/* Arrow buttons */
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(5px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
 .updx-arrow {
-    position: absolute; top: 50%; transform: translateY(-50%);
-    z-index: 5; width: 34px; height: 34px; border-radius: 50%;
-    background: rgba(255,255,255,.15);
-    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-    border: 1.5px solid rgba(255,255,255,.3);
-    color: #fff; font-size: .8rem; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
+    position: absolute; top: 50%; transform: translateY(-50%); z-index: 5;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(255,255,255,.15); backdrop-filter: blur(6px);
+    border: 1.5px solid rgba(255,255,255,.3); color: #fff; font-size: .78rem;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
     transition: background .2s, border-color .2s, transform .2s;
 }
 .updx-arrow:hover {
@@ -228,79 +205,163 @@
 }
 .updx-img-dot {
     width: 5px; height: 5px; border-radius: 50%;
-    background: rgba(255,255,255,.4);
-    border: none; padding: 0; cursor: pointer;
+    background: rgba(255,255,255,.4); border: none; padding: 0; cursor: pointer;
     transition: background .2s, transform .2s;
 }
 .updx-img-dot.active { background: #fff; transform: scale(1.5); }
 
-/* Text side — slides in from right */
 .updx-text-side {
     flex: 1; display: none; flex-direction: column;
-    padding: 1.6rem 1.6rem 1.2rem; gap: .8rem;
+    padding: 1.6rem 1.6rem 1.2rem; gap: .85rem;
     overflow-y: auto; background: #fff; height: 100%;
+    animation: panelRight 0.4s 0.12s cubic-bezier(.22,.68,0,1.1) both;
 }
-.upd-card.upd-active .updx-text-side {
-    display: flex;
-    animation: updSlideInR .42s .04s cubic-bezier(.22,.68,0,1.1) both;
-}
-@keyframes updSlideInR {
-    from { opacity: 0; transform: translateX(14px); }
+.upd-card.upd-active .updx-text-side { display: flex; }
+@keyframes panelRight {
+    from { opacity: 0; transform: translateX(12px); }
     to   { opacity: 1; transform: translateX(0); }
 }
 
 .updx-title {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 1.3rem; font-weight: 800; color: var(--text-dark);
+    font-size: 1.35rem; font-weight: 800; color: var(--text-dark);
     margin: 0; line-height: 1.2;
-    text-align: center;
+    animation: fadeUp 0.35s 0.28s ease both;
 }
 .updx-desc {
-    color: var(--text-light); font-size: .88rem; line-height: 1.78;
+    color: var(--text-light); font-size: .9rem; line-height: 1.8;
     margin: 0; flex: 1; white-space: pre-line; overflow-y: auto;
-    text-align: left;
+    animation: fadeUp 0.35s 0.38s ease both;
 }
 .updx-close-btn {
     display: inline-flex; align-items: center; gap: .38rem;
     background: var(--light-bg); border: none; color: var(--text-light);
-    padding: .45rem .95rem; border-radius: 8px;
+    padding: .48rem .95rem; border-radius: 8px;
     font-size: .8rem; font-weight: 700; font-family: inherit; cursor: pointer;
-    transition: background .2s, color .2s;
-    margin-top: auto;
+    transition: background .2s, color .2s; margin-top: auto; align-self: flex-start;
+    animation: fadeUp 0.35s 0.48s ease both;
 }
 .updx-close-btn:hover { background: var(--border-color); color: var(--text-dark); }
 
-/* ── Toggle ── */
-.upd-toggle-wrap { display: flex; justify-content: center; margin-top: 1.8rem; }
-.upd-toggle-btn {
-    display: inline-flex; align-items: center; gap: .5rem;
-    background: #fff; border: 1.5px solid var(--border-color);
-    color: var(--text-dark); padding: .6rem 1.5rem; border-radius: 50px;
-    font-size: .84rem; font-weight: 700; font-family: inherit; cursor: pointer;
-    transition: background .22s, border-color .22s, color .22s, transform .2s, box-shadow .2s;
-}
-.upd-toggle-btn:hover {
-    background: var(--primary-color); border-color: var(--primary-color);
-    color: #fff; transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(21,101,192,.22);
-}
-.upd-toggle-btn i { font-size: .7rem; }
+.upd-toggle-wrap { display: none !important; }
+.upd-see-all-btn { display: none !important; }
+.upd-card-hidden { display: block !important; }
 
-/* ── Responsive ── */
+/* ════════════════════════════════════════════════════════════════
+   RESPONSIVE — Tablet
+   ════════════════════════════════════════════════════════════════ */
 @media (max-width: 900px) {
     .upd-row { grid-template-columns: repeat(2, 1fr); }
-    .upd-row.upd-row-expanded { grid-template-columns: 2fr 1fr; }
-    .upd-card { height: 320px; }
-    .upd-card.upd-active { height: 320px; }
+    .upd-row-has-active .upd-card.upd-active { grid-column: span 2; }
+    .upd-card { height: 340px; }
+    .upd-card.upd-active { height: 340px; }
 }
-@media (max-width: 600px) {
-    .upd-row, .upd-row.upd-row-expanded { grid-template-columns: 1fr 1fr; gap: .8rem; }
-    .upd-card { height: 240px; }
-    .upd-card.upd-active {
-        height: auto; min-height: 400px;
-        flex-direction: column;
-        grid-column: 1 / -1;
+
+/* ════════════════════════════════════════════════════════════════
+   RESPONSIVE — Mobile
+   ════════════════════════════════════════════════════════════════ */
+@media (max-width: 580px) {
+
+    #updates { padding: 40px 0 56px; }
+
+    .upd-grid { gap: 1.4rem; }
+
+    /* Single column */
+    .upd-row,
+    .upd-row-has-active {
+        grid-template-columns: 1fr;
+        gap: 1.4rem;
     }
-    .updx-img-side { flex: none; height: 200px; width: 100%; }
-    .updx-text-side { height: auto; padding: 1rem 1.1rem; }
+    .upd-row-has-active .upd-card.upd-active {
+        grid-column: span 1;
+    }
+
+    /* Portrait card — tall enough to show the image properly */
+    .upd-card {
+        height: 460px;
+        border-radius: 16px;
+    }
+
+    /* Title bar */
+    .upd-card-bar {
+        bottom: 16px; left: 16px; right: 16px;
+        padding: 1rem 1.1rem;
+        border-radius: 10px;
+    }
+    .upd-card-title {
+        font-size: 1.05rem;
+        white-space: normal;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* Date badge */
+    .upd-date-badge {
+        top: 14px; left: 14px;
+        font-size: .73rem;
+        padding: .35rem .9rem;
+    }
+
+    /* Learn more label */
+    .upd-learn-more-label {
+        font-size: .95rem;
+        padding: .65rem 1.5rem;
+    }
+
+    /* Expanded card — stacks vertically */
+    .upd-card.upd-active {
+        height: auto !important;
+        min-height: 700px;
+        flex-direction: column;
+        border-radius: 16px;
+    }
+
+    /* Image section — tall so photo fills nicely */
+    .updx-img-side {
+        flex: none;
+        height: 400px;
+        width: 100%;
+    }
+
+    /* Arrow buttons bigger for touch */
+    .updx-arrow {
+        width: 40px;
+        height: 40px;
+        font-size: .9rem;
+    }
+
+    /* Text panel */
+    .updx-text-side {
+        flex: none;
+        height: auto;
+        min-height: 280px;
+        padding: 1.8rem 1.4rem 1.6rem;
+        gap: 1rem;
+    }
+
+    .updx-title {
+        font-size: 1.4rem;
+        line-height: 1.2;
+    }
+
+    .updx-desc {
+        font-size: .94rem;
+        line-height: 1.8;
+        max-height: none;
+        overflow-y: visible;
+    }
+
+    .updx-date-badge {
+        font-size: .73rem;
+        padding: .35rem .9rem;
+    }
+
+    .updx-close-btn {
+        margin-top: 1.4rem;
+        padding: .65rem 1.3rem;
+        font-size: .88rem;
+        border-radius: 10px;
+    }
 }

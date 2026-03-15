@@ -375,11 +375,7 @@ unset($upd);
                     <?php else: ?>
                         <?php
                         $placeholders = [
-                            ['General Construction','fa-hard-hat'],
-                            ['Custom Building','fa-building'],
-                            ['Outdoor Design','fa-tree'],
-                            ['Interior Remodeling','fa-couch'],
-                            ['Roofing Services','fa-tools'],
+
                         ];
                         foreach ($placeholders as $pi => $ph):
                             $num = str_pad($pi+1,2,'0',STR_PAD_LEFT);

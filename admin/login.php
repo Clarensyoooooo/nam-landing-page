@@ -154,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      alt="NAM Builders Logo"
                      class="login-logo"
                      onerror="this.style.display='none'">
-                <h2>NAM Builders</h2>
+                <h2>NAM Builders and Supply Corp</h2>
                 <p>Admin Panel</p>
             </div>
 
