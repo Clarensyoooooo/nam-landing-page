@@ -185,6 +185,205 @@ if ($result) {
         </div>
     </div>
 </div>
+<!-- ═══════════════════════════════════════════════════════════════
+     TOAST NOTIFICATION SYSTEM
+     Paste this block just before the closing </body> tag in
+     admin/dashboard.php  (replace the existing inline <script> block
+     or add it right after the </div> that closes .admin-layout)
+     ═══════════════════════════════════════════════════════════════ -->
+
+<!-- Toast container (fixed top-right) -->
+<div id="toastContainer" style="
+    position: fixed;
+    top: 1.2rem;
+    right: 1.2rem;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    gap: .65rem;
+    pointer-events: none;
+    max-width: 360px;
+    width: calc(100vw - 2.4rem);
+"></div>
+
+<style>
+/* ── Toast card ── */
+.adm-toast {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    background: #fff;
+    border-radius: 12px;
+    padding: .9rem 1rem .9rem 1rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.1);
+    pointer-events: all;
+    position: relative;
+    overflow: hidden;
+    /* slide-in from right */
+    animation: toastSlideIn .35s cubic-bezier(.22,.68,0,1.1) both;
+    border-left: 4px solid #ccc;
+    min-width: 260px;
+}
+.adm-toast.toast-success { border-left-color: #28A745; }
+.adm-toast.toast-danger  { border-left-color: #DC3545; }
+.adm-toast.toast-warning { border-left-color: #FFC107; }
+.adm-toast.toast-info    { border-left-color: #1565C0; }
+
+@keyframes toastSlideIn {
+    from { opacity: 0; transform: translateX(60px) scale(.96); }
+    to   { opacity: 1; transform: translateX(0)    scale(1);   }
+}
+@keyframes toastSlideOut {
+    from { opacity: 1; transform: translateX(0)    scale(1);   max-height: 120px; margin-bottom: 0; }
+    to   { opacity: 0; transform: translateX(60px) scale(.96); max-height: 0;     margin-bottom: -.65rem; }
+}
+.adm-toast.removing {
+    animation: toastSlideOut .35s ease forwards;
+    pointer-events: none;
+}
+
+/* Icon circle */
+.adm-toast-icon {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .95rem; flex-shrink: 0; margin-top: .05rem;
+}
+.toast-success .adm-toast-icon { background: #D4EDDA; color: #28A745; }
+.toast-danger  .adm-toast-icon { background: #F8D7DA; color: #DC3545; }
+.toast-warning .adm-toast-icon { background: #FFF3CD; color: #856404; }
+.toast-info    .adm-toast-icon { background: #D1ECF1; color: #1565C0; }
+
+/* Text */
+.adm-toast-body { flex: 1; min-width: 0; }
+.adm-toast-title {
+    font-size: .78rem; font-weight: 800; letter-spacing: .06em;
+    text-transform: uppercase; margin-bottom: .18rem;
+}
+.toast-success .adm-toast-title { color: #28A745; }
+.toast-danger  .adm-toast-title { color: #DC3545; }
+.toast-warning .adm-toast-title { color: #856404; }
+.toast-info    .adm-toast-title { color: #1565C0; }
+
+.adm-toast-msg {
+    font-size: .86rem; color: #374151; line-height: 1.5;
+    word-break: break-word;
+}
+
+/* Close button */
+.adm-toast-close {
+    background: none; border: none; color: #9CA3AF;
+    font-size: 1.1rem; cursor: pointer; padding: 0; line-height: 1;
+    flex-shrink: 0; transition: color .2s; margin-top: -.1rem;
+}
+.adm-toast-close:hover { color: #374151; }
+
+/* Progress bar (counts down 5 s) */
+.adm-toast-progress {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 3px; background: rgba(0,0,0,.06);
+}
+.adm-toast-progress-fill {
+    height: 100%; width: 100%;
+    transition: width linear;
+}
+.toast-success .adm-toast-progress-fill { background: #28A745; }
+.toast-danger  .adm-toast-progress-fill { background: #DC3545; }
+.toast-warning .adm-toast-progress-fill { background: #FFC107; }
+.toast-info    .adm-toast-progress-fill { background: #1565C0; }
+</style>
+
+<script>
+/* ════════════════════════════════════════════════════════════════
+   TOAST SYSTEM
+   Usage (from anywhere in the admin):
+     showToast('Your message', 'success')   // success | danger | warning | info
+     showToast('Upload failed', 'danger')
+   ════════════════════════════════════════════════════════════════ */
+(function () {
+
+    var DURATION = 5000; // ms before auto-dismiss
+
+    var icons = {
+        success: 'fas fa-check-circle',
+        danger:  'fas fa-exclamation-circle',
+        warning: 'fas fa-exclamation-triangle',
+        info:    'fas fa-info-circle'
+    };
+    var titles = {
+        success: 'Success',
+        danger:  'Error',
+        warning: 'Warning',
+        info:    'Info'
+    };
+
+    window.showToast = function (message, type) {
+        type = type || 'info';
+
+        var container = document.getElementById('toastContainer');
+        if (!container) return;
+
+        var toast = document.createElement('div');
+        toast.className = 'adm-toast toast-' + type;
+
+        toast.innerHTML =
+            '<div class="adm-toast-icon"><i class="' + icons[type] + '"></i></div>' +
+            '<div class="adm-toast-body">' +
+                '<div class="adm-toast-title">' + (titles[type] || 'Notice') + '</div>' +
+                '<div class="adm-toast-msg">'  + message + '</div>' +
+            '</div>' +
+            '<button class="adm-toast-close" aria-label="Dismiss">&times;</button>' +
+            '<div class="adm-toast-progress">' +
+                '<div class="adm-toast-progress-fill"></div>' +
+            '</div>';
+
+        container.appendChild(toast);
+
+        /* close button */
+        toast.querySelector('.adm-toast-close').addEventListener('click', function () {
+            removeToast(toast);
+        });
+
+        /* progress bar animation — start after a short delay so the
+           browser has painted the element at width:100% first */
+        var fill = toast.querySelector('.adm-toast-progress-fill');
+        setTimeout(function () {
+            fill.style.transition = 'width ' + DURATION + 'ms linear';
+            fill.style.width = '0%';
+        }, 30);
+
+        /* auto-dismiss */
+        var timer = setTimeout(function () { removeToast(toast); }, DURATION);
+
+        /* pause on hover */
+        toast.addEventListener('mouseenter', function () { clearTimeout(timer); fill.style.transitionDuration = '0ms'; });
+        toast.addEventListener('mouseleave', function () {
+            var remaining = (parseFloat(fill.style.width) / 100) * DURATION;
+            fill.style.transition = 'width ' + remaining + 'ms linear';
+            fill.style.width = '0%';
+            timer = setTimeout(function () { removeToast(toast); }, remaining);
+        });
+    };
+
+    function removeToast(toast) {
+        toast.classList.add('removing');
+        toast.addEventListener('animationend', function () {
+            if (toast.parentNode) toast.parentNode.removeChild(toast);
+        });
+    }
+
+    /* ── Pick up PHP setAlert() messages rendered by displayAlert() ── */
+    document.addEventListener('DOMContentLoaded', function () {
+        var el = document.getElementById('phpAlertData');
+        if (el) {
+            var msg  = el.getAttribute('data-message');
+            var type = el.getAttribute('data-type') || 'info';
+            if (msg) showToast(msg, type);
+            el.parentNode.removeChild(el);
+        }
+    });
+
+}());
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="../js/admin.js"></script>

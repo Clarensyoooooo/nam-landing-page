@@ -141,10 +141,7 @@ unset($upd);
                         <img src="css/assets/about-bg.jpg"
                              alt="NAM Builders and Supply Corp team"
                              onerror="this.src='https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=700&q=80'">
-                        <div class="about-badge">
-                            <span class="about-badge-num">15<sup>+</sup></span>
-                            <span class="about-badge-label">Years of<br>Excellence</span>
-                        </div>
+
                     </div>
                 </div>
                 <div class="about-text-col reveal reveal-delay-1">
@@ -368,7 +365,7 @@ unset($upd);
 
                             <div class="svc-card-label">
                                 <h3 class="svc-card-name"><?php echo htmlspecialchars($sv['service_name']); ?></h3>
-                                <span class="svc-card-cta">Learn more <i class="fas fa-arrow-right"></i></span>
+                                <span class="svc-card-cta">Inquire Now <i class="fas fa-arrow-right"></i></span>
                             </div>
                         </div>
                         <?php endforeach; ?>
@@ -390,7 +387,7 @@ unset($upd);
                             <div class="svc-card-label">
                                 <span class="svc-card-tag">Service</span>
                                 <h3 class="svc-card-name"><?php echo $ph[0]; ?></h3>
-                                <span class="svc-card-cta">Learn more <i class="fas fa-arrow-right"></i></span>
+                                <span class="svc-card-cta">Inquire Now <i class="fas fa-arrow-right"></i></span>
                             </div>
                         </div>
                         <?php endforeach; ?>
@@ -596,7 +593,7 @@ unset($upd);
                     </div>
                     <div class="upd-date-badge"><i class="fas fa-calendar-alt"></i><?php echo $date; ?></div>
                     <div class="upd-learn-more">
-                        <span class="upd-learn-more-label">Learn More <i class="fas fa-arrow-right"></i></span>
+                        <span class="upd-learn-more-label">Read More <i class="fas fa-arrow-right"></i></span>
                     </div>
                     <div class="upd-card-bar">
                         <h3 class="upd-card-title"><?php echo htmlspecialchars($upd['title']); ?></h3>
@@ -640,12 +637,11 @@ unset($upd);
                         </blockquote>
                         <div class="founder-rule"></div>
                         <div class="founder-identity">
-                            <div class="founder-initials">N</div>
+                            <div class="founder-initials">A</div>
                             <div>
                                 <h3 class="founder-name">Alberto Molinyawe Jr</h3>
                                 <span class="founder-title">Founder &amp; Chief Executive Officer</span>
                                 <div class="founder-socials">
-                                    <a href="#" class="founder-social" title="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
                                     <a href="#" class="founder-social" title="Facebook"><i class="fab fa-facebook-f"></i></a>
                                 </div>
                             </div>
@@ -656,7 +652,7 @@ unset($upd);
                     <div class="founder-photo-frame">
                         <div class="founder-photo-bg-accent"></div>
                         <div class="founder-photo-wrap">
-                            <img src="css/assets/hero-bg.jpg"
+                            <img src="css/assets/ceo.jpg"
                                 alt="NAM Builders and Supply Corp and Founder & CEO"
                                 onerror="this.src='https://images.unsplash.com/photo-1560250097-0b93528c311a?w=600&q=80'">
                         </div>

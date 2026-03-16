@@ -43,32 +43,32 @@ function getFileExtension($filename) {
 function generateUniqueFilename($originalName) {
     $extension = getFileExtension($originalName);
     $name = pathinfo($originalName, PATHINFO_FILENAME);
-    return preg_replace('/[^a-z0-9]/i', '_', $name) . '_' . time() . '.' . $extension;
+    return preg_replace('/[^a-z0-9]/i', '_', $name) . '_' . time() . '_' . rand(1000, 9999) . '.' . $extension;
 }
 
-// Upload file
+// Upload file — max 10 MB per file
 function uploadFile($file, $uploadDir) {
     $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-    $maxFileSize = 5 * 1024 * 1024; // 5MB
+    $maxFileSize       = 10 * 1024 * 1024; // 10 MB
 
     $fileExtension = getFileExtension($file['name']);
-    $fileSize = $file['size'];
+    $fileSize      = $file['size'];
 
     if (!in_array($fileExtension, $allowedExtensions)) {
         return ['success' => false, 'error' => 'Invalid file type. Allowed: ' . implode(', ', $allowedExtensions)];
     }
 
     if ($fileSize > $maxFileSize) {
-        return ['success' => false, 'error' => 'File size exceeds 5MB limit'];
+        return ['success' => false, 'error' => 'File "' . htmlspecialchars($file['name']) . '" exceeds the 10 MB limit (' . round($fileSize / 1048576, 1) . ' MB).'];
     }
 
     $newFilename = generateUniqueFilename($file['name']);
-    $uploadPath = $uploadDir . $newFilename;
+    $uploadPath  = $uploadDir . $newFilename;
 
     if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
         return ['success' => true, 'filename' => $newFilename, 'path' => $uploadPath];
     } else {
-        return ['success' => false, 'error' => 'Failed to move uploaded file'];
+        return ['success' => false, 'error' => 'Failed to move uploaded file. Check folder permissions.'];
     }
 }
 
@@ -90,20 +90,19 @@ function setAlert($message, $type = 'success') {
     $_SESSION['alert'] = ['message' => $message, 'type' => $type];
 }
 
-// Display alert
+// Display alert — now outputs a data attribute for the toast system
 function displayAlert() {
     if (isset($_SESSION['alert'])) {
         $alert = $_SESSION['alert'];
-        $alertClass = $alert['type'] === 'success' ? 'alert-success' : 'alert-danger';
-        echo '<div class="alert ' . $alertClass . ' alert-dismissible fade show" role="alert">';
-        echo $alert['message'];
-        echo '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
-        echo '</div>';
+        echo '<div id="phpAlertData"
+                   data-message="' . htmlspecialchars($alert['message'], ENT_QUOTES) . '"
+                   data-type="'    . htmlspecialchars($alert['type'],    ENT_QUOTES) . '"
+                   style="display:none;"></div>';
         unset($_SESSION['alert']);
     }
 }
 
-// Get all clients — only those with a real image_path (excludes old placeholder rows)
+// Get all clients
 function getAllClients($conn, $active_only = true) {
     $query = "SELECT * FROM clients";
     if ($active_only) {
@@ -128,7 +127,7 @@ function getAllServices($conn, $active_only = true) {
 // Get service by ID
 function getServiceById($conn, $id) {
     $query = "SELECT * FROM services WHERE id = ?";
-    $stmt = $conn->prepare($query);
+    $stmt  = $conn->prepare($query);
     $stmt->bind_param("i", $id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -138,7 +137,7 @@ function getServiceById($conn, $id) {
 // Get client by ID
 function getClientById($conn, $id) {
     $query = "SELECT * FROM clients WHERE id = ?";
-    $stmt = $conn->prepare($query);
+    $stmt  = $conn->prepare($query);
     $stmt->bind_param("i", $id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -147,9 +146,9 @@ function getClientById($conn, $id) {
 
 // Count total records
 function countRecords($conn, $table) {
-    $query = "SELECT COUNT(*) as count FROM " . $table;
+    $query  = "SELECT COUNT(*) as count FROM " . $table;
     $result = $conn->query($query);
-    $row = $result->fetch_assoc();
+    $row    = $result->fetch_assoc();
     return $row['count'];
 }
 
@@ -159,7 +158,7 @@ function jsonResponse($success, $message = '', $data = []) {
     echo json_encode([
         'success' => $success,
         'message' => $message,
-        'data' => $data
+        'data'    => $data
     ]);
     exit();
 }

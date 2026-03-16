@@ -10,11 +10,17 @@ foreach ($services as &$service) {
     $service['images'] = $img_result ? $img_result->fetch_all(MYSQLI_ASSOC) : [];
 }
 unset($service);
+
+// ── Fix UPLOADS_URL for admin pages ──────────────────────────────────────────
+// BASE_URL is built from PHP_SELF so when loaded inside admin/dashboard.php it
+// becomes http://localhost/nam_builders/admin/ — we must strip /admin to get
+// the true site root before appending uploads/.
+$admin_uploads_url = rtrim(str_replace('/admin', '', rtrim(BASE_URL, '/')), '/') . '/uploads/';
 ?>
 
 <script>
-// PHP constant passed to JS so image URLs can be built client-side
-var UPLOADS_URL = '<?php echo UPLOADS_URL; ?>';
+// Absolute uploads URL — always resolves to /nam_builders/uploads/
+var UPLOADS_URL = '<?php echo $admin_uploads_url; ?>';
 </script>
 
 <style>
@@ -307,7 +313,7 @@ function editService(id) {
     fetch('../backend/get_service.php?id=' + id)
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            if (!data.success) { alert('Could not load service.'); return; }
+            if (!data.success) { showToast('Could not load service.', 'danger'); return; }
             var s = data.data;
 
             document.getElementById('modalTitle').innerText        = 'Edit Service';
@@ -339,8 +345,9 @@ function buildExistingImgItem(img) {
     wrapper.className = 'existing-img-item';
     wrapper.id = 'img-wrapper-' + img.id;
 
+    // UPLOADS_URL is corrected at the top of this file to always point
+    // to the site root /uploads/ regardless of which admin page is active.
     var imgEl = document.createElement('img');
-    // UPLOADS_URL is the PHP constant echoed into JS at the top of this file
     imgEl.src = UPLOADS_URL + img.image_path;
     imgEl.alt = 'Service image';
     imgEl.onerror = function() {
@@ -368,7 +375,6 @@ function buildExistingImgItem(img) {
 }
 
 function deleteServiceImage(imgId, wrapperEl) {
-    // Backend file is delete_service_img.php
     fetch('../backend/delete_service_img.php?id=' + imgId)
         .then(function(r) { return r.json(); })
         .then(function(data) {
@@ -381,10 +387,10 @@ function deleteServiceImage(imgId, wrapperEl) {
                     }
                 }
             } else {
-                alert('Failed to delete image: ' + data.message);
+                showToast('Failed to delete image: ' + data.message, 'danger');
             }
         })
-        .catch(function() { alert('Network error. Please try again.'); });
+        .catch(function() { showToast('Network error. Please try again.', 'danger'); });
 }
 
 function submitServiceForm(event) {
@@ -394,7 +400,7 @@ function submitServiceForm(event) {
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.success) { window.location.href = 'dashboard.php?page=services'; }
-            else { alert('Error: ' + data.message); }
+            else { showToast(data.message, 'danger'); }
         });
 }
 
