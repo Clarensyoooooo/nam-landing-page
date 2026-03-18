@@ -639,7 +639,7 @@ unset($upd);
                                 <h3 class="founder-name">Alberto Molinyawe Jr</h3>
                                 <span class="founder-title">Founder &amp; Chief Executive Officer</span>
                                 <div class="founder-socials">
-                                    <a href="#" class="founder-social" title="Facebook"><i class="fab fa-facebook-f"></i></a>
+                                    <a href="https://www.facebook.com/abetmillionyawe" class="founder-social" title="Facebook"><i class="fab fa-facebook-f"></i></a>
                                 </div>
                             </div>
                         </div>
@@ -649,7 +649,7 @@ unset($upd);
                     <div class="founder-photo-frame">
                         <div class="founder-photo-bg-accent"></div>
                         <div class="founder-photo-wrap">
-                            <img src="css/assets/ceo.jpg"
+                            <img src="css/assets/ceo.png"
                                 alt="NAM Builders and Supply Corp and Founder & CEO"
                                 onerror="this.src='https://images.unsplash.com/photo-1560250097-0b93528c311a?w=600&q=80'">
                         </div>
