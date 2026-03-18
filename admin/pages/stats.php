@@ -6,7 +6,6 @@ displayAlert();
 ?>
 
 <style>
-/* ── Stats preview bar ── */
 .stats-preview-bar {
     background: var(--primary-color);
     border-radius: 14px;
@@ -28,8 +27,6 @@ displayAlert();
     letter-spacing: .06em; text-transform: uppercase;
     opacity: .85; margin-top: .3rem; display: block;
 }
-
-/* ── Stat edit cards ── */
 .stat-cards-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -75,10 +72,7 @@ displayAlert();
 .stat-toggle { display: flex; align-items: center; gap: .5rem; margin-top: .5rem; }
 .stat-toggle input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary-color); }
 .stat-toggle label { font-size: .82rem; font-weight: 600; color: var(--text-light); cursor: pointer; margin: 0; }
-.stat-active-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: #28A745; display: inline-block; flex-shrink: 0;
-}
+.stat-active-dot { width: 8px; height: 8px; border-radius: 50%; background: #28A745; display: inline-block; flex-shrink: 0; }
 .stat-inactive-dot { background: #6C757D; }
 </style>
 
@@ -91,7 +85,6 @@ displayAlert();
     </div>
 </div>
 
-<!-- Live preview -->
 <div class="stats-preview-bar" id="statsPreviewBar">
     <?php foreach ($all_stats as $st): if (!$st['is_active']) continue; ?>
     <div class="stats-preview-item" id="preview_<?php echo $st['id']; ?>">
@@ -106,15 +99,12 @@ displayAlert();
     <?php foreach ($all_stats as $i => $st): ?>
     <div class="stat-edit-card" id="statCard_<?php echo $st['id']; ?>">
         <span class="card-num-badge"><?php echo str_pad($st['sort_order'], 2, '0', STR_PAD_LEFT); ?></span>
-
         <input type="hidden" name="ids[]" value="<?php echo $st['id']; ?>">
-
         <label class="form-label" style="margin-top:.4rem;">Label</label>
         <input type="text" class="form-control" name="labels[]"
                value="<?php echo htmlspecialchars($st['label']); ?>"
                maxlength="80" required
                oninput="livePreview(<?php echo $st['id']; ?>, this.closest('.stat-edit-card'))">
-
         <div class="stat-input-row" style="margin-top:.7rem;">
             <div>
                 <label class="form-label">Value</label>
@@ -131,7 +121,6 @@ displayAlert();
                        oninput="livePreview(<?php echo $st['id']; ?>, this.closest('.stat-edit-card'))">
             </div>
         </div>
-
         <div class="stat-input-row">
             <div>
                 <label class="form-label">Sort Order</label>
@@ -139,7 +128,6 @@ displayAlert();
                        value="<?php echo $st['sort_order']; ?>" min="0" max="99">
             </div>
         </div>
-
         <div class="stat-toggle">
             <span class="stat-active-dot <?php echo $st['is_active'] ? '' : 'stat-inactive-dot'; ?>"
                   id="dot_<?php echo $st['id']; ?>"></span>
@@ -157,14 +145,10 @@ displayAlert();
     <button type="submit" class="btn-add" id="statsSaveBtn">
         <i class="fas fa-save"></i> Save All Stats
     </button>
-    <span id="statsSaveMsg" style="font-size:.85rem; color:#28A745; display:none; font-weight:700;">
-        <i class="fas fa-check-circle"></i> Saved successfully!
-    </span>
 </div>
 </form>
 
 <script>
-/* ── Live preview of number + label as user types ── */
 function livePreview(id, card) {
     var val    = card.querySelector('input[name="values[]"]').value   || '0';
     var suffix = card.querySelector('input[name="suffixes[]"]').value || '';
@@ -175,7 +159,6 @@ function livePreview(id, card) {
     prev.querySelector('.stats-preview-label').textContent  = label;
 }
 
-/* ── Toggle visibility in preview bar ── */
 function togglePreview(id, active) {
     var prev = document.getElementById('preview_' + id);
     var dot  = document.getElementById('dot_' + id);
@@ -183,14 +166,11 @@ function togglePreview(id, active) {
     if (dot)  dot.className = 'stat-active-dot' + (active ? '' : ' stat-inactive-dot');
 }
 
-/* ── Save via AJAX ── */
 function saveStats(e) {
     e.preventDefault();
     var btn = document.getElementById('statsSaveBtn');
-    var msg = document.getElementById('statsSaveMsg');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
-    msg.style.display = 'none';
 
     fetch('../backend/save_stats.php', {
         method: 'POST',
@@ -201,16 +181,15 @@ function saveStats(e) {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-save"></i> Save All Stats';
         if (data.success) {
-            msg.style.display = 'inline-flex';
-            setTimeout(function() { msg.style.display = 'none'; }, 3500);
+            showToast('Stats updated successfully. Changes are now live on the website.', 'success');
         } else {
-            alert('Error: ' + data.message);
+            showToast('Failed to save: ' + data.message, 'danger');
         }
     })
     .catch(function() {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-save"></i> Save All Stats';
-        alert('Network error. Please try again.');
+        showToast('Network error. Please try again.', 'danger');
     });
 }
 </script>

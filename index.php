@@ -794,6 +794,54 @@ unset($upd);
         </div>
     </div>
 
+    <!-- ══ 2. PASTE JUST BEFORE </body> ══ -->
+    <div id="frontToastContainer"></div>
+
+    <script>
+    (function () {
+        var DURATION = 6000;
+        var ftIcons  = { success:'fas fa-check-circle', error:'fas fa-exclamation-circle', info:'fas fa-info-circle' };
+        var ftTitles = { success:'Message Sent!', error:'Something went wrong', info:'Notice' };
+
+        window.showFrontToast = function (message, type) {
+            type = type || 'info';
+            var container = document.getElementById('frontToastContainer');
+            if (!container) return;
+
+            var toast = document.createElement('div');
+            toast.className = 'front-toast ft-' + type;
+            toast.innerHTML =
+                '<div class="ft-icon"><i class="' + ftIcons[type] + '"></i></div>' +
+                '<div class="ft-body">' +
+                    '<div class="ft-title">' + ftTitles[type] + '</div>' +
+                    '<div class="ft-msg">'  + message + '</div>' +
+                '</div>' +
+                '<button class="ft-close" aria-label="Dismiss">&times;</button>' +
+                '<div class="ft-progress"><div class="ft-progress-fill"></div></div>';
+
+            container.appendChild(toast);
+            toast.querySelector('.ft-close').addEventListener('click', function () { removeFtToast(toast); });
+
+            var fill = toast.querySelector('.ft-progress-fill');
+            setTimeout(function () { fill.style.transition = 'width ' + DURATION + 'ms linear'; fill.style.width = '0%'; }, 30);
+
+            var timer = setTimeout(function () { removeFtToast(toast); }, DURATION);
+            toast.addEventListener('mouseenter', function () { clearTimeout(timer); fill.style.transitionDuration = '0ms'; });
+            toast.addEventListener('mouseleave', function () {
+                var remaining = (parseFloat(fill.style.width || '100') / 100) * DURATION;
+                fill.style.transition = 'width ' + remaining + 'ms linear';
+                fill.style.width = '0%';
+                timer = setTimeout(function () { removeFtToast(toast); }, remaining);
+            });
+        };
+
+        function removeFtToast(toast) {
+            toast.classList.add('ft-removing');
+            toast.addEventListener('animationend', function () { if (toast.parentNode) toast.parentNode.removeChild(toast); });
+        }
+    }());
+    </script>
+
     <!-- ── Footer ── -->
     <footer>
         <div class="container-lg">

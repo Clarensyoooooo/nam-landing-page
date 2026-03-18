@@ -31,8 +31,6 @@
             e.preventDefault();
             var targetEl  = document.querySelector(target);
             var navHeight = 72;
-            /* Use offsetTop so we scroll to the element's true document position,
-               bypassing any sticky scroll-budget traps */
             window.scrollTo({ top: Math.max(0, targetEl.offsetTop - navHeight), behavior: 'smooth' });
         });
     });
@@ -43,13 +41,9 @@
     ═══════════════════════════════════════════════ */
     var revObs = new IntersectionObserver(function (entries) {
         entries.forEach(function (e) {
-            if (e.isIntersecting) {
-                e.target.classList.add('visible');
-                revObs.unobserve(e.target);
-            }
+            if (e.isIntersecting) { e.target.classList.add('visible'); revObs.unobserve(e.target); }
         });
     }, { threshold: 0.1 });
-
     document.querySelectorAll('.reveal').forEach(function (el) { revObs.observe(el); });
 
 
@@ -64,8 +58,7 @@
                 counted = true;
                 document.querySelectorAll('.counter').forEach(function (c) {
                     var target = parseInt(c.getAttribute('data-target'));
-                    var n = 0;
-                    var step = Math.ceil(target / 50);
+                    var n = 0, step = Math.ceil(target / 50);
                     var t = setInterval(function () {
                         n += step;
                         if (n >= target) { n = target; clearInterval(t); }
@@ -79,10 +72,6 @@
 
     /* ═══════════════════════════════════════════════
        5. SERVICE MODAL
-       Triggered by:
-         a) .svc-card clicks dispatched via 'svcCardClick' event
-            from services-scroll.js
-         b) Legacy .service-modern-card clicks (fallback)
     ═══════════════════════════════════════════════ */
     var svcModal   = document.getElementById('svcModal');
     var slidesWrap = document.getElementById('svcmSlides');
@@ -91,15 +80,12 @@
     var descEl     = document.getElementById('svcmDesc');
     var cur = 0, tot = 0, tmr = null;
 
-    /* Exposed so services-scroll.js can call directly if needed */
     window.openSvcModalExternal = openSvcModal;
 
-    /* Listen for events from services-scroll.js */
     document.addEventListener('svcCardClick', function (e) {
         openSvcModal(e.detail.name, e.detail.desc, e.detail.images);
     });
 
-    /* Legacy fallback for any .service-modern-card elements still in DOM */
     document.querySelectorAll('#services .service-modern-card').forEach(function (card) {
         card.addEventListener('click', function (e) {
             if (e.target.closest('.service-read-more')) e.preventDefault();
@@ -120,15 +106,13 @@
         tot = images ? images.length : 0;
 
         if (!tot) {
-            slidesWrap.innerHTML =
-                '<div class="svcm-no-img"><i class="fas fa-hard-hat"></i></div>';
+            slidesWrap.innerHTML = '<div class="svcm-no-img"><i class="fas fa-hard-hat"></i></div>';
         } else {
             images.forEach(function (src, i) {
                 var s   = document.createElement('div');
                 s.className = 'svcm-slide' + (i === 0 ? ' on' : '');
                 var img = document.createElement('img');
-                img.src = src;
-                img.alt = name;
+                img.src = src; img.alt = name;
                 s.appendChild(img);
                 slidesWrap.appendChild(s);
 
@@ -136,9 +120,7 @@
                     var d = document.createElement('button');
                     d.className = 'svcm-dot' + (i === 0 ? ' on' : '');
                     d.setAttribute('aria-label', 'Image ' + (i + 1));
-                    (function (idx) {
-                        d.addEventListener('click', function () { svcGoTo(idx); });
-                    }(i));
+                    (function (idx) { d.addEventListener('click', function () { svcGoTo(idx); }); }(i));
                     dotsWrap.appendChild(d);
                 }
             });
@@ -147,12 +129,7 @@
         svcModal.classList.add('open');
         document.body.style.overflow = 'hidden';
         clearInterval(tmr);
-
-        if (tot > 1) {
-            tmr = setInterval(function () {
-                svcGoTo((cur + 1) % tot);
-            }, 3000);
-        }
+        if (tot > 1) tmr = setInterval(function () { svcGoTo((cur + 1) % tot); }, 3000);
     }
 
     function svcGoTo(idx) {
@@ -173,15 +150,11 @@
     }
 
     document.getElementById('svcmCloseBtn').addEventListener('click', closeSvcModal);
-
     document.getElementById('svcmQuoteBtn').addEventListener('click', function () {
         closeSvcModal();
         openContactModal();
     });
-
-    svcModal.addEventListener('click', function (e) {
-        if (e.target === svcModal) closeSvcModal();
-    });
+    svcModal.addEventListener('click', function (e) { if (e.target === svcModal) closeSvcModal(); });
 
 
     /* ═══════════════════════════════════════════════
@@ -211,17 +184,11 @@
 
     var footerContactLink = document.getElementById('footerContactLink');
     if (footerContactLink) {
-        footerContactLink.addEventListener('click', function (e) {
-            e.preventDefault();
-            openContactModal();
-        });
+        footerContactLink.addEventListener('click', function (e) { e.preventDefault(); openContactModal(); });
     }
 
     document.getElementById('contactModalCloseBtn').addEventListener('click', closeContactModal);
-
-    contactModal.addEventListener('click', function (e) {
-        if (e.target === contactModal) closeContactModal();
-    });
+    contactModal.addEventListener('click', function (e) { if (e.target === contactModal) closeContactModal(); });
 
 
     /* ═══════════════════════════════════════════════
@@ -233,18 +200,13 @@
         if (!triggers.length || !panels.length) return;
 
         function openVmo(key) {
-            triggers.forEach(function (t) {
-                t.classList.toggle('active', t.getAttribute('data-vmo') === key);
-            });
-            panels.forEach(function (p) {
-                p.classList.toggle('open', p.id === 'vmo-' + key);
-            });
+            triggers.forEach(function (t) { t.classList.toggle('active', t.getAttribute('data-vmo') === key); });
+            panels.forEach(function (p) { p.classList.toggle('open', p.id === 'vmo-' + key); });
         }
 
         triggers.forEach(function (t) {
             t.addEventListener('click', function () { openVmo(t.getAttribute('data-vmo')); });
         });
-
         openVmo('vision');
     }());
 
@@ -288,14 +250,9 @@
         });
         inp.addEventListener('paste', function (e) {
             e.preventDefault();
-            var pasted = (e.clipboardData || window.clipboardData)
-                .getData('text').replace(/[^0-9]/g, '').slice(0, 6);
+            var pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '').slice(0, 6);
             pasted.split('').forEach(function (ch, j) {
-                if (digits[j]) {
-                    digits[j].value = ch;
-                    progDots[j].classList.add('filled');
-                    digits[j].classList.add('filled');
-                }
+                if (digits[j]) { digits[j].value = ch; progDots[j].classList.add('filled'); digits[j].classList.add('filled'); }
             });
             digits[Math.min(pasted.length, 5)].focus();
             updateVerifyBtn();
@@ -306,11 +263,7 @@
     function updateVerifyBtn() { vmVerifyBtn.disabled = (getCode().length !== 6 || countdownSeconds <= 0); }
 
     function clearDigits() {
-        digits.forEach(function (d, i) {
-            d.value = '';
-            d.classList.remove('filled', 'error');
-            progDots[i].classList.remove('filled');
-        });
+        digits.forEach(function (d, i) { d.value = ''; d.classList.remove('filled', 'error'); progDots[i].classList.remove('filled'); });
         vmVerifyBtn.disabled = true;
     }
 
@@ -352,11 +305,7 @@
         resendInterval = setInterval(function () {
             secs--;
             vmResendTimer.textContent = ' (' + secs + 's)';
-            if (secs <= 0) {
-                clearInterval(resendInterval);
-                vmResendBtn.disabled = false;
-                vmResendTimer.textContent = '';
-            }
+            if (secs <= 0) { clearInterval(resendInterval); vmResendBtn.disabled = false; vmResendTimer.textContent = ''; }
         }, 1000);
     }
 
@@ -384,11 +333,7 @@
     verifyModal.addEventListener('click', function (e) { if (e.target === verifyModal) closeVerifyModal(); });
 
     document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') {
-            closeVerifyModal();
-            closeSvcModal();
-            closeContactModal();
-        }
+        if (e.key === 'Escape') { closeVerifyModal(); closeSvcModal(); closeContactModal(); }
     });
 
     function sendOTP(email, onSuccess, onError) {
@@ -400,7 +345,7 @@
             .catch(function () { onError('Network error. Please try again.'); });
     }
 
-    /* contact form submit → send OTP */
+    /* Contact form submit → send OTP */
     var contactForm = document.getElementById('contactForm');
     var submitBtn   = document.getElementById('submitBtn');
 
@@ -441,7 +386,7 @@
         );
     });
 
-    /* resend OTP */
+    /* Resend OTP */
     vmResendBtn.addEventListener('click', function () {
         var email = document.getElementById('cf_email').value.trim();
         hideVmAlert();
@@ -461,7 +406,7 @@
         );
     });
 
-    /* verify button */
+    /* Verify button — on success: close modals, show front toast */
     vmVerifyBtn.addEventListener('click', function () {
         var code = getCode();
         if (code.length !== 6) return;
@@ -483,26 +428,24 @@
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (data.success) {
+                    /* Close both modals, reset form, show front toast */
                     closeVerifyModal();
+                    closeContactModal();
                     contactForm.reset();
-                    var banner = document.getElementById('contactSuccessBanner');
-                    var msgEl  = document.getElementById('contactSuccessMsg');
-                    if (banner && msgEl) {
-                        msgEl.textContent = data.message;
-                        banner.classList.add('show');
+                    if (typeof showFrontToast === 'function') {
+                        showFrontToast(data.message, 'success');
                     }
-                    openContactModal();
                 } else {
                     shakeDigits();
                     showVmAlert(data.message, 'error');
-                    vmVerifyBtn.innerHTML = '<i class="fas fa-check-circle"></i> Verify & Send Message';
+                    vmVerifyBtn.innerHTML = '<i class="fas fa-check-circle"></i> Verify &amp; Send Message';
                     vmVerifyBtn.disabled  = false;
                 }
             })
             .catch(function () {
                 shakeDigits();
                 showVmAlert('Something went wrong. Please try again.', 'error');
-                vmVerifyBtn.innerHTML = '<i class="fas fa-check-circle"></i> Verify & Send Message';
+                vmVerifyBtn.innerHTML = '<i class="fas fa-check-circle"></i> Verify &amp; Send Message';
                 vmVerifyBtn.disabled  = false;
             });
     });
@@ -522,48 +465,38 @@
             pill.addEventListener('click', function () {
                 supPills.forEach(function (p) { p.classList.remove('active'); });
                 pill.classList.add('active');
-
                 var filter = pill.getAttribute('data-filter');
                 var visible = 0;
-
                 supItems.forEach(function (item) {
                     var show = filter === 'all' || item.getAttribute('data-cat') === filter;
                     item.classList.toggle('sup-hidden', !show);
                     if (show) visible++;
                 });
-
                 if (supNoRes) supNoRes.style.display = visible === 0 ? '' : 'none';
             });
         });
 
-        /* Supply inquire button */
         window.openSupplyInquiry = function (supplyName) {
             var serviceSelect = document.getElementById('cf_service');
             if (serviceSelect) {
                 var selected = false;
                 for (var i = 0; i < serviceSelect.options.length; i++) {
-                    var optText = serviceSelect.options[i].text.toLowerCase();
-                    if (optText.includes('supply')) {
+                    if (serviceSelect.options[i].text.toLowerCase().includes('supply')) {
                         serviceSelect.value = serviceSelect.options[i].value;
-                        selected = true;
-                        break;
+                        selected = true; break;
                     }
                 }
                 if (!selected) {
                     var tempOpt = document.createElement('option');
-                    tempOpt.value = 'Supply Services';
-                    tempOpt.text  = 'Supply Services';
+                    tempOpt.value = tempOpt.text = 'Supply Services';
                     serviceSelect.appendChild(tempOpt);
                     serviceSelect.value = 'Supply Services';
                 }
             }
-
             var msgField = document.getElementById('cf_message');
             if (msgField && !msgField.value.trim()) {
-                msgField.value = 'I am interested in: ' + supplyName +
-                    '\n\nPlease send me availability and pricing information.';
+                msgField.value = 'I am interested in: ' + supplyName + '\n\nPlease send me availability and pricing information.';
             }
-
             openContactModal();
         };
     }());
@@ -575,16 +508,11 @@
     (function () {
         var founderEls = document.querySelectorAll('.founder-reveal-text, .founder-reveal-photo');
         if (!founderEls.length) return;
-
         var founderObs = new IntersectionObserver(function (entries) {
             entries.forEach(function (entry) {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('founder-in');
-                    founderObs.unobserve(entry.target);
-                }
+                if (entry.isIntersecting) { entry.target.classList.add('founder-in'); founderObs.unobserve(entry.target); }
             });
         }, { threshold: 0.15 });
-
         founderEls.forEach(function (el) { founderObs.observe(el); });
     }());
 
@@ -593,18 +521,14 @@
        10. AUTO-DISMISS BOOTSTRAP ALERTS
     ═══════════════════════════════════════════════ */
     document.querySelectorAll('.alert').forEach(function (alert) {
-        setTimeout(function () {
-            var btn = alert.querySelector('.btn-close');
-            if (btn) btn.click();
-        }, 5000);
+        setTimeout(function () { var btn = alert.querySelector('.btn-close'); if (btn) btn.click(); }, 5000);
     });
 
 
-    /* ═══════════════════════════════════════════════════════════════
-       11. SERVICES — simple prev/next arrow carousel (no scroll hijack)
-    ═══════════════════════════════════════════════════════════════ */
+    /* ═══════════════════════════════════════════════
+       11. SERVICES — prev/next arrow carousel
+    ═══════════════════════════════════════════════ */
     (function () {
-
         var svcTrack    = document.getElementById('svcTrack');
         var svcCounter  = document.getElementById('svcCounter');
         var svcFill     = document.getElementById('svcProgressFill');
@@ -626,7 +550,6 @@
         var currentTx = 0;
         var targetTx  = 0;
 
-        /* ── Build dots ── */
         var svcDots = [];
         if (svcDotsWrap) {
             svcCards.forEach(function (_, i) {
@@ -639,52 +562,34 @@
             });
         }
 
-        /* ── Card dimensions by breakpoint ── */
         function recalc() {
             var vw = window.innerWidth;
             CARD_W = vw <= 480 ? 185 : vw <= 768 ? 220 : 280;
             var CARD_H = vw <= 480 ? 260 : vw <= 768 ? 300 : 370;
-
             svcCards.forEach(function (c) {
-                c.style.width     = CARD_W + 'px';
-                c.style.minWidth  = CARD_W + 'px';
-                c.style.maxWidth  = CARD_W + 'px';
-                c.style.height    = CARD_H + 'px';
+                c.style.width = c.style.minWidth = c.style.maxWidth = CARD_W + 'px';
+                c.style.height = CARD_H + 'px';
                 c.style.flexShrink = '0';
             });
             svcTrack.style.flexWrap = 'nowrap';
             svcTrack.style.width    = 'max-content';
-
             targetTx  = getTxForCard(activeIdx);
             currentTx = targetTx;
             svcTrack.style.transform = 'translateX(' + currentTx + 'px)';
         }
 
-        /* centre the active card in the full-width .svc-viewport */
         var svcViewport = document.querySelector('.svc-viewport');
-        function getViewportW() {
-            return svcViewport ? svcViewport.clientWidth : window.innerWidth;
-        }
-        function getTxForCard(idx) {
-            var vw = getViewportW();
-            return (vw * 0.5 - CARD_W * 0.5) - idx * (CARD_W + CARD_GAP);
-        }
+        function getViewportW() { return svcViewport ? svcViewport.clientWidth : window.innerWidth; }
+        function getTxForCard(idx) { return (getViewportW() * 0.5 - CARD_W * 0.5) - idx * (CARD_W + CARD_GAP); }
 
-        /* smooth lerp animation */
         function animateTick() {
             var diff = targetTx - currentTx;
-            if (Math.abs(diff) < 0.5) {
-                currentTx = targetTx;
-                svcTrack.style.transform = 'translateX(' + currentTx + 'px)';
-                animRaf = null;
-                return;
-            }
+            if (Math.abs(diff) < 0.5) { currentTx = targetTx; svcTrack.style.transform = 'translateX(' + currentTx + 'px)'; animRaf = null; return; }
             currentTx += diff * 0.14;
             svcTrack.style.transform = 'translateX(' + currentTx + 'px)';
             animRaf = requestAnimationFrame(animateTick);
         }
         function startAnim() { if (!animRaf) animRaf = requestAnimationFrame(animateTick); }
-
         function pad(n) { return n < 10 ? '0' + n : '' + n; }
 
         function goToCard(idx) {
@@ -704,7 +609,6 @@
             if (svcFill) svcFill.style.transform = 'scaleX(' + (N > 1 ? activeIdx / (N - 1) : 1) + ')';
             if (btnPrev) btnPrev.disabled = (activeIdx === 0);
             if (btnNext) btnNext.disabled = (activeIdx === N - 1);
-
             svcCards.forEach(function (card, i) {
                 card.classList.remove('svc-active', 'svc-near', 'svc-far', 'svc-right');
                 var diff = i - activeIdx;
@@ -714,11 +618,9 @@
             });
         }
 
-        /* Arrow buttons */
         if (btnPrev) btnPrev.addEventListener('click', function (e) { e.stopPropagation(); goToCard(activeIdx - 1); });
         if (btnNext) btnNext.addEventListener('click', function (e) { e.stopPropagation(); goToCard(activeIdx + 1); });
 
-        /* Swipe on mobile */
         var touchStartX = 0;
         svcTrack.addEventListener('touchstart', function (e) { touchStartX = e.touches[0].clientX; }, { passive: true });
         svcTrack.addEventListener('touchend', function (e) {
@@ -726,7 +628,6 @@
             if (Math.abs(dx) > 40) goToCard(dx > 0 ? activeIdx + 1 : activeIdx - 1);
         }, { passive: true });
 
-        /* Card click → open modal */
         svcCards.forEach(function (card) {
             card.addEventListener('click', function () {
                 var name = card.getAttribute('data-name');
@@ -737,7 +638,6 @@
             });
         });
 
-        /* Init */
         function init() {
             recalc();
             goToCard(0);
@@ -746,7 +646,6 @@
 
         if (document.readyState === 'complete') { init(); }
         else { window.addEventListener('load', init); }
-
     }());
 
 }());
