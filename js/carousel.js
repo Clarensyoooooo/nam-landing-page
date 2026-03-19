@@ -609,30 +609,79 @@
             if (btnPrev) btnPrev.disabled = (activeIdx === 0);
             if (btnNext) btnNext.disabled = (activeIdx === N - 1);
             svcCards.forEach(function (card, i) {
-                card.classList.remove('svc-active', 'svc-near', 'svc-far', 'svc-right');
-                var diff = i - activeIdx;
-                if (diff === 0)                { card.classList.add('svc-active'); }
-                else if (Math.abs(diff) === 1) { card.classList.add('svc-near');  if (diff > 0) card.classList.add('svc-right'); }
-                else                           { card.classList.add('svc-far');   if (diff > 0) card.classList.add('svc-right'); }
+                card.classList.remove('svc-active', 'svc-near', 'svc-far', 'svc-right',
+                                      'svc-d1', 'svc-d2', 'svc-d3', 'svc-d4');
+                var diff    = i - activeIdx;
+                var absDiff = Math.abs(diff);
+                var isRight = diff > 0;
+
+                if (diff === 0) {
+                    card.classList.add('svc-active');
+                } else {
+                    // distance class for bridge arc depth
+                    var dClass = absDiff >= 4 ? 'svc-d4' :
+                                 absDiff === 3 ? 'svc-d3' :
+                                 absDiff === 2 ? 'svc-d2' : 'svc-d1';
+                    card.classList.add(dClass);
+                    if (isRight) card.classList.add('svc-right');
+                    // keep legacy near/far for any external code
+                    if (absDiff === 1) card.classList.add('svc-near');
+                    else               card.classList.add('svc-far');
+                }
             });
         }
 
         if (btnPrev) btnPrev.addEventListener('click', function (e) { e.stopPropagation(); goToCard(activeIdx - 1); });
         if (btnNext) btnNext.addEventListener('click', function (e) { e.stopPropagation(); goToCard(activeIdx + 1); });
 
+        /* ── Touch / swipe support (full carousel wrap, not just track) ── */
+        var svcWrap     = document.querySelector('.svc-carousel-wrap');
         var touchStartX = 0;
-        svcTrack.addEventListener('touchstart', function (e) { touchStartX = e.touches[0].clientX; }, { passive: true });
-        svcTrack.addEventListener('touchend', function (e) {
-            var dx = touchStartX - e.changedTouches[0].clientX;
-            if (Math.abs(dx) > 40) goToCard(dx > 0 ? activeIdx + 1 : activeIdx - 1);
-        }, { passive: true });
+        var touchStartY = 0;
+        var isSwiping   = false;
 
+        function onTouchStart(e) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            isSwiping   = false;
+        }
+        function onTouchMove(e) {
+            var dx = Math.abs(e.touches[0].clientX - touchStartX);
+            var dy = Math.abs(e.touches[0].clientY - touchStartY);
+            if (dx > dy && dx > 8) { isSwiping = true; e.preventDefault(); }
+        }
+        function onTouchEnd(e) {
+            var dx = touchStartX - e.changedTouches[0].clientX;
+            if (isSwiping && Math.abs(dx) > 35) {
+                goToCard(dx > 0 ? activeIdx + 1 : activeIdx - 1);
+            }
+            isSwiping = false;
+        }
+
+        /* Attach to the full carousel wrap so swipe works anywhere on the strip */
+        if (svcWrap) {
+            svcWrap.addEventListener('touchstart', onTouchStart, { passive: true });
+            svcWrap.addEventListener('touchmove',  onTouchMove,  { passive: false });
+            svcWrap.addEventListener('touchend',   onTouchEnd,   { passive: true });
+        }
+
+        /* ── Card click: non-active → center first; active → open modal ── */
         svcCards.forEach(function (card) {
-            card.addEventListener('click', function () {
-                var name = card.getAttribute('data-name');
-                var desc = card.getAttribute('data-desc');
+            card.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var idx = parseInt(card.getAttribute('data-index'));
+
+                /* If this card is NOT the active/center one, just slide it to center */
+                if (idx !== activeIdx) {
+                    goToCard(idx);
+                    return;   /* do NOT open modal yet */
+                }
+
+                /* Card is already centered — open the modal */
+                var name   = card.getAttribute('data-name');
+                var desc   = card.getAttribute('data-desc');
                 var images = [];
-                try { images = JSON.parse(card.getAttribute('data-imgs') || '[]'); } catch (e) {}
+                try { images = JSON.parse(card.getAttribute('data-imgs') || '[]'); } catch (_) {}
                 openSvcModal(name, desc, images);
             });
         });

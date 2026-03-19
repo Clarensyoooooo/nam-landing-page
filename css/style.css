@@ -764,43 +764,51 @@ body { overflow-x:hidden; }
     transition: transform .3s ease;
 }
 
-/* ── Carousel wrapper — full viewport width, arrows at edges ── */
+/* ── Carousel wrapper — true full-bleed, zero side padding ── */
 .svc-carousel-wrap {
     position: relative;
-    /* Break out of any container padding to go full-width */
+    /* Break out of container to reach viewport edges */
+    width: 100vw;
     margin-left: calc(-50vw + 50%);
-    margin-right: calc(-50vw + 50%);
-    padding: 0 56px;   /* space for the edge arrows */
+    margin-right: 0;
+    padding: 0;          /* zero padding — cards go wall to wall */
+    box-sizing: border-box;
 }
 
-/* Edge arrow buttons */
+/* ── Arrow buttons: float OVER the card strip at left & right ──
+   position:relative on .svc-carousel-wrap makes these absolute
+   children. They overlap the cards with z-index, take zero space. ── */
 .svc-arrow-btn {
     position: absolute;
-    top: 50%; transform: translateY(-50%);
-    z-index: 10;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 20;
     width: 40px; height: 40px; border-radius: 50%;
-    border: 1.5px solid var(--border-color);
-    background: #fff; color: var(--text-dark);
+    border: none;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: var(--text-dark);
     display: flex; align-items: center; justify-content: center;
     font-size: .88rem; cursor: pointer;
-    transition: background .22s, border-color .22s, color .22s,
-                transform .2s, box-shadow .2s;
-    box-shadow: 0 2px 10px rgba(0,0,0,.08);
+    transition: background .22s, color .22s, transform .2s, box-shadow .2s;
+    box-shadow: 0 4px 16px rgba(0,0,0,.15);
 }
 .svc-arrow-btn:hover:not(:disabled) {
-    background: var(--primary-color); border-color: var(--primary-color); color: #fff;
-    transform: translateY(-50%) scale(1.06);
-    box-shadow: 0 4px 16px rgba(21,101,192,.3);
+    background: var(--primary-color); color: #fff;
+    transform: translateY(-50%) scale(1.08);
+    box-shadow: 0 6px 20px rgba(21,101,192,.35);
 }
-.svc-arrow-btn:disabled { opacity: .32; cursor: not-allowed; }
-#svcBtnPrev { left: 8px; }
-#svcBtnNext { right: 8px; }
+.svc-arrow-btn:disabled { opacity: .3; cursor: not-allowed; }
+/* Left edge / Right edge — small inset so they overlap the card corners */
+#svcBtnPrev { left:  12px; }
+#svcBtnNext { right: 12px; }
 
-/* ── The visible card strip ── */
-.svc-viewport { overflow: hidden; }
+/* ── The visible card strip — full width, no padding ── */
+.svc-viewport { overflow: hidden; width: 100%; }
 .svc-track {
-    display: flex; gap: 18px; align-items: center;
-    padding: 1.2rem 0 1.6rem;
+    display: flex; gap: 18px; align-items: flex-start;
+    padding: 1.4rem 0 6rem;   /* extra bottom padding for bridge arc drop */
     will-change: transform; transition: transform .0s;
 }
 
@@ -812,9 +820,10 @@ body { overflow-x:hidden; }
     cursor: pointer; border: 1.5px solid var(--border-color); background: #fff;
     transform-origin: bottom center;
     will-change: transform, opacity;
-    transform: scale(.9) translateY(6px); opacity: .55;
-    transition: transform .45s cubic-bezier(.22,.68,0,1.1),
-                opacity .45s ease, box-shadow .45s ease, border-color .35s;
+    /* Default state (very far cards) */
+    transform: scale(.78) translateY(60px) rotate(-5deg); opacity: .25;
+    transition: transform .5s cubic-bezier(.22,.68,0,1.1),
+                opacity .5s ease, box-shadow .5s ease, border-color .35s;
 }
 .svc-card::before {
     content: ''; position: absolute; inset: 0;
@@ -827,16 +836,36 @@ body { overflow-x:hidden; }
     z-index: 2; opacity: 0; transition: opacity .4s; pointer-events: none;
 }
 .svc-card:hover::after { opacity: 1; }
+
+/* ── Bridge / arc transforms — each step drops progressively more ── */
+
+/* Center card: peak of the bridge — tallest, fully visible */
 .svc-card.svc-active {
-    transform: scale(1.04) translateY(-8px); opacity: 1;
-    box-shadow: 0 20px 50px rgba(21,101,192,.16), 0 6px 20px rgba(0,0,0,.07),
+    transform: scale(1.06) translateY(-12px); opacity: 1;
+    box-shadow: 0 24px 60px rgba(21,101,192,.18), 0 8px 24px rgba(0,0,0,.08),
                 0 0 0 1.5px rgba(21,101,192,.28);
     border-color: rgba(21,101,192,.28); z-index: 10;
 }
-.svc-card.svc-near       { transform: scale(.96) translateY(2px) rotate(-1deg); opacity: .78; }
-.svc-card.svc-near.svc-right { transform: scale(.96) translateY(2px) rotate(1deg); }
-.svc-card.svc-far        { transform: scale(.88) translateY(8px) rotate(-2deg); opacity: .4; }
-.svc-card.svc-far.svc-right  { transform: scale(.88) translateY(8px) rotate(2deg); }
+
+/* 1 step from center */
+.svc-card.svc-d1                { transform: scale(.96) translateY(12px) rotate(-2deg);  opacity: .82; }
+.svc-card.svc-d1.svc-right      { transform: scale(.96) translateY(12px) rotate(2deg);   opacity: .82; }
+
+/* 2 steps from center */
+.svc-card.svc-d2                { transform: scale(.88) translateY(34px) rotate(-4deg);  opacity: .58; }
+.svc-card.svc-d2.svc-right      { transform: scale(.88) translateY(34px) rotate(4deg);   opacity: .58; }
+
+/* 3 steps from center */
+.svc-card.svc-d3                { transform: scale(.80) translateY(58px) rotate(-6deg);  opacity: .35; }
+.svc-card.svc-d3.svc-right      { transform: scale(.80) translateY(58px) rotate(6deg);   opacity: .35; }
+
+/* 4+ steps from center */
+.svc-card.svc-d4                { transform: scale(.74) translateY(78px) rotate(-8deg);  opacity: .18; }
+.svc-card.svc-d4.svc-right      { transform: scale(.74) translateY(78px) rotate(8deg);   opacity: .18; }
+
+/* Keep legacy aliases so any external code still works */
+.svc-card.svc-near  { /* handled by svc-d1 */ }
+.svc-card.svc-far   { /* handled by svc-d2/d3/d4 */ }
 
 .svc-card-img { position: absolute; inset: 0; z-index: 0; }
 .svc-card-img img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .5s ease; }
@@ -879,15 +908,41 @@ body { overflow-x:hidden; }
 .svc-arrows { display: none; }
 
 @media (max-width: 768px) {
-    .svc-carousel-wrap { padding: 0 40px; }
+    .svc-carousel-wrap { padding: 0; }
     #svcBtnPrev, #svcBtnNext { width: 34px; height: 34px; font-size: .8rem; }
+    #svcBtnPrev { left:  8px; }
+    #svcBtnNext { right: 8px; }
     .svc-card { width: 220px; height: 300px; }
-    .svc-header { flex-direction: column; align-items: flex-start; gap: .75rem; }
+    .svc-header { padding-right: 0; }
 }
 @media (max-width: 480px) {
-    .svc-carousel-wrap { padding: 0 36px; }
+    .svc-carousel-wrap { padding: 0; }
+    #svcBtnPrev { left:  6px; }
+    #svcBtnNext { right: 6px; }
     .svc-card { width: 185px; height: 260px; }
     .svc-card-name { font-size: .98rem; }
+    .svc-header { padding-right: 0; }
+}
+
+/* ── Touch swipe hint on mobile ── */
+@media (max-width: 768px) {
+    .svc-swipe-hint {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: .4rem;
+        font-size: .72rem;
+        font-weight: 700;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        color: var(--text-light);
+        opacity: .6;
+        padding: .4rem 0 0;
+    }
+    .svc-swipe-hint i { font-size: .8rem; }
+}
+@media (min-width: 769px) {
+    .svc-swipe-hint { display: none; }
 }
 
 /* ════════════════════════════════════════════════════════════════

@@ -302,7 +302,7 @@ unset($upd);
     <section id="services">
         <div class="svc-sticky" id="svcSticky">
 
-            <!-- Section header — centered, inside container -->
+            <!-- Section header -->
             <div class="container-lg">
                 <div class="svc-header">
                     <p class="svc-eyebrow">What We Do</p>
@@ -316,10 +316,14 @@ unset($upd);
                 </div>
             </div>
 
-            <!-- Carousel: full-width with edge arrows -->
+            <!-- Carousel: full viewport width, arrows float OVER the card strip -->
             <div class="svc-carousel-wrap">
+
                 <button class="svc-arrow-btn" id="svcBtnPrev" aria-label="Previous service" disabled>
                     <i class="fas fa-chevron-left"></i>
+                </button>
+                <button class="svc-arrow-btn" id="svcBtnNext" aria-label="Next service">
+                    <i class="fas fa-chevron-right"></i>
                 </button>
 
                 <div class="svc-viewport">
@@ -366,9 +370,7 @@ unset($upd);
                         <?php endforeach; ?>
                     <?php else: ?>
                         <?php
-                        $placeholders = [
-
-                        ];
+                        $placeholders = [];
                         foreach ($placeholders as $pi => $ph):
                             $num = str_pad($pi+1,2,'0',STR_PAD_LEFT);
                         ?>
@@ -388,16 +390,17 @@ unset($upd);
                         <?php endforeach; ?>
                     <?php endif; ?>
 
-                </div>
-                </div>
+                    </div><!-- /.svc-track -->
+                </div><!-- /.svc-viewport -->
 
-                <button class="svc-arrow-btn" id="svcBtnNext" aria-label="Next service">
-                    <i class="fas fa-chevron-right"></i>
-                </button>
-            </div>
+            </div><!-- /.svc-carousel-wrap -->
 
-            
             <div class="svc-dots" id="svcDots"></div>
+
+            <!-- Mobile swipe hint -->
+            <p class="svc-swipe-hint">
+                <i class="fas fa-hand-pointer"></i> Swipe to explore
+            </p>
 
         </div>
     </section>

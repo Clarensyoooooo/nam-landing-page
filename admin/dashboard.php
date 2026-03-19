@@ -78,9 +78,6 @@ if ($result) {
                 <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:.95rem;color:#fff;line-height:1.2;">NAM Builders and Supply Corp</div>
                 <div style="font-size:.68rem;color:rgba(255,255,255,.7);font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Admin Panel</div>
             </div>
-            <button id="sidebarCloseBtn"
-                    style="margin-left:auto;background:rgba(255,255,255,.1);border:none;border-radius:6px;width:30px;height:30px;color:rgba(255,255,255,.7);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"
-                    title="Close menu">&times;</button>
         </div>
 
         <nav style="padding:.75rem 0;flex:1;display:flex;flex-direction:column;">
