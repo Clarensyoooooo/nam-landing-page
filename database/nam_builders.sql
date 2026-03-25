@@ -1,8 +1,8 @@
 -- NAM Builders and Supply Corp Database
 
--- Create Database
-CREATE DATABASE IF NOT EXISTS nam_builders;
-USE nam_builders;
+
+
+ 
 
 -- Admin Users Table
 CREATE TABLE IF NOT EXISTS admin_users (
@@ -101,7 +101,7 @@ CREATE INDEX idx_supplies_active   ON supplies(is_active);
 -- NAM Builders: Updates / Posts feature
 -- Run this to add the updates tables to the existing nam_builders database
 
-USE nam_builders;
+ 
 
 -- Main updates table
 CREATE TABLE IF NOT EXISTS updates (
@@ -131,7 +131,7 @@ CREATE INDEX IF NOT EXISTS idx_update_images_post ON update_images(update_id, so
 -- NAM Builders: Site Stats feature
 -- Run this on your nam_builders database
 
-USE nam_builders;
+ 
 
 CREATE TABLE IF NOT EXISTS site_stats (
     id          INT PRIMARY KEY AUTO_INCREMENT,
@@ -151,5 +151,5 @@ INSERT IGNORE INTO site_stats (stat_key, label, value, suffix, sort_order) VALUE
   ('service_categories', 'Service Categories',   6, '',  4);
 
   -- Run this in your database to add the replied status
-USE nam_builders;
+ 
 ALTER TABLE contact_messages ADD COLUMN is_replied TINYINT(1) DEFAULT 0 AFTER is_read;
