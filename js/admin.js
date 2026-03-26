@@ -1,7 +1,5 @@
 /* =============================================================================
    admin.js — NAM Builders Admin Panel
-   All admin-specific JavaScript extracted from individual page files.
-   Loaded via <script> at the bottom of admin/dashboard.php.
    ============================================================================= */
 
 
@@ -34,14 +32,12 @@
 
     if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
 
-    // Close when a nav link is clicked on mobile
     sidebar.querySelectorAll('.admin-nav-link').forEach(link => {
         link.addEventListener('click', () => {
             if (window.innerWidth <= 768) closeSidebar();
         });
     });
 
-    // Close on Escape key
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') closeSidebar();
     });
@@ -50,8 +46,6 @@
 
 /* =============================================================================
    2. TOAST NOTIFICATION SYSTEM
-   Usage: showToast('Your message', 'success')
-   Types: success | danger | warning | info
    ============================================================================= */
 
 (function initToasts() {
@@ -91,20 +85,16 @@
 
         container.appendChild(toast);
 
-        // Close button
         toast.querySelector('.adm-toast-close').addEventListener('click', () => removeToast(toast));
 
-        // Animate progress bar
         const fill = toast.querySelector('.adm-toast-progress-fill');
         setTimeout(() => {
             fill.style.transition = `width ${DURATION}ms linear`;
             fill.style.width = '0%';
         }, 30);
 
-        // Auto-dismiss timer
         let timer = setTimeout(() => removeToast(toast), DURATION);
 
-        // Pause progress on hover
         toast.addEventListener('mouseenter', () => {
             clearTimeout(timer);
             fill.style.transitionDuration = '0ms';
@@ -138,10 +128,43 @@
 
 
 /* =============================================================================
-   3. CLIENTS PAGE
+   SHARED FETCH HELPER
+   Wraps fetch + JSON parse with consistent error handling.
    ============================================================================= */
 
-// ── Delete confirm modal ──────────────────────────────────────────────────────
+function adminFetch(url, formData, onSuccess, onError) {
+    fetch(url, { method: 'POST', body: formData })
+        .then(r => {
+            // If response is not ok (redirect happened, session expired, etc.)
+            if (!r.ok) {
+                throw new Error('Server returned status ' + r.status + '. You may need to log in again.');
+            }
+            return r.text();
+        })
+        .then(text => {
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                // PHP returned non-JSON (HTML error page, notice, warning, redirect)
+                console.error('Non-JSON response from server:', text.substring(0, 300));
+                throw new Error('Unexpected server response. Check PHP error logs. Details: ' + text.substring(0, 120));
+            }
+            if (data.success) {
+                onSuccess(data);
+            } else {
+                onError(data.message || 'An unknown error occurred.');
+            }
+        })
+        .catch(err => {
+            onError(err.message || 'Network error. Please try again.');
+        });
+}
+
+
+/* =============================================================================
+   3. CLIENTS PAGE
+   ============================================================================= */
 
 let _clientDeleteId = null;
 
@@ -162,8 +185,6 @@ function executeClientDelete() {
     }
 }
 
-// ── Add / Edit client modal ───────────────────────────────────────────────────
-
 function openAddClientModal() {
     document.getElementById('modalTitle').innerText = 'Add New Client';
     document.getElementById('clientForm').reset();
@@ -179,8 +200,7 @@ function editClient(id) {
     fetch(`../backend/get_client.php?id=${id}`)
         .then(r => r.json())
         .then(data => {
-            if (!data.success) return;
-
+            if (!data.success) { showToast('Could not load client.', 'danger'); return; }
             const c = data.data;
             document.getElementById('modalTitle').innerText       = 'Edit Client';
             document.getElementById('clientId').value             = c.id;
@@ -189,41 +209,45 @@ function editClient(id) {
             document.getElementById('clientOrder').value          = c.sort_order;
             document.getElementById('clientActive').checked       = c.is_active == 1;
             document.getElementById('clientModal').classList.add('active');
-        });
+        })
+        .catch(() => showToast('Network error loading client.', 'danger'));
 }
 
 function submitClientForm(event) {
     event.preventDefault();
 
-    const formData = new FormData(document.getElementById('clientForm'));
+    const clientName = document.getElementById('clientName').value.trim();
+    if (!clientName) {
+        showToast('Client name is required.', 'danger');
+        document.getElementById('clientName').focus();
+        return;
+    }
 
-    fetch('../backend/save_client.php', { method: 'POST', body: formData })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                window.location.href = 'dashboard.php?page=clients';
-            } else {
-                alert(`Error: ${data.message}`);
-            }
-        });
+    const btn = event.submitter || document.querySelector('#clientForm button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
+
+    adminFetch(
+        '../backend/save_client.php',
+        new FormData(document.getElementById('clientForm')),
+        (data) => {
+            window.location.href = 'dashboard.php?page=clients';
+        },
+        (errMsg) => {
+            showToast(errMsg, 'danger');
+            if (btn) { btn.disabled = false; btn.innerHTML = 'Save Client'; }
+        }
+    );
 }
-
-// ── Modal close helpers ───────────────────────────────────────────────────────
 
 function initClientModalListeners() {
     document.getElementById('clientModal')?.addEventListener('click', e => {
         if (e.target === e.currentTarget) closeClientModal();
     });
-
     document.getElementById('clientDeleteConfirmModal')?.addEventListener('click', e => {
         if (e.target === e.currentTarget) closeClientDeleteConfirm();
     });
-
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') {
-            closeClientModal();
-            closeClientDeleteConfirm();
-        }
+        if (e.key === 'Escape') { closeClientModal(); closeClientDeleteConfirm(); }
     });
 }
 
@@ -233,8 +257,6 @@ document.addEventListener('DOMContentLoaded', initClientModalListeners);
 /* =============================================================================
    4. SERVICES PAGE
    ============================================================================= */
-
-// ── Delete confirm modal ──────────────────────────────────────────────────────
 
 let _svcDeleteId = null;
 
@@ -254,8 +276,6 @@ function executeSvcDelete() {
         window.location.href = `../backend/delete_service.php?id=${_svcDeleteId}`;
     }
 }
-
-// ── Add / Edit service modal ──────────────────────────────────────────────────
 
 function openAddServiceModal() {
     document.getElementById('modalTitle').innerText = 'Add New Service';
@@ -280,15 +300,12 @@ function previewNewImages(input) {
         reader.onload = e => {
             const wrap = document.createElement('div');
             wrap.style.cssText = 'position:relative;display:inline-block;';
-
             const img = document.createElement('img');
             img.src = e.target.result;
             img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--primary-color);display:block;';
-
             const lbl = document.createElement('span');
             lbl.textContent = 'NEW';
             lbl.style.cssText = 'position:absolute;bottom:4px;left:50%;transform:translateX(-50%);background:var(--primary-color);color:#fff;font-size:9px;font-weight:800;padding:1px 6px;border-radius:4px;';
-
             wrap.appendChild(img);
             wrap.appendChild(lbl);
             preview.appendChild(wrap);
@@ -301,11 +318,7 @@ function editService(id) {
     fetch(`../backend/get_service.php?id=${id}`)
         .then(r => r.json())
         .then(data => {
-            if (!data.success) {
-                showToast('Could not load service.', 'danger');
-                return;
-            }
-
+            if (!data.success) { showToast('Could not load service.', 'danger'); return; }
             const s = data.data;
             document.getElementById('modalTitle').innerText          = 'Edit Service';
             document.getElementById('serviceId').value               = s.id;
@@ -328,7 +341,8 @@ function editService(id) {
             }
 
             document.getElementById('serviceModal').classList.add('active');
-        });
+        })
+        .catch(() => showToast('Network error loading service.', 'danger'));
 }
 
 function buildExistingImgItem(img) {
@@ -381,35 +395,45 @@ function deleteServiceImage(imgId, wrapperEl) {
 function submitServiceForm(event) {
     event.preventDefault();
 
-    const formData = new FormData(document.getElementById('serviceForm'));
+    const serviceName = document.getElementById('serviceName').value.trim();
+    const serviceDesc = document.getElementById('serviceDescription').value.trim();
 
-    fetch('../backend/save_service.php', { method: 'POST', body: formData })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                window.location.href = 'dashboard.php?page=services';
-            } else {
-                showToast(data.message, 'danger');
-            }
-        });
+    if (!serviceName) {
+        showToast('Service name is required.', 'danger');
+        document.getElementById('serviceName').focus();
+        return;
+    }
+    if (!serviceDesc) {
+        showToast('Service description is required.', 'danger');
+        document.getElementById('serviceDescription').focus();
+        return;
+    }
+
+    const btn = event.submitter || document.querySelector('#serviceForm button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
+
+    adminFetch(
+        '../backend/save_service.php',
+        new FormData(document.getElementById('serviceForm')),
+        (data) => {
+            window.location.href = 'dashboard.php?page=services';
+        },
+        (errMsg) => {
+            showToast(errMsg, 'danger');
+            if (btn) { btn.disabled = false; btn.innerHTML = 'Save Service'; }
+        }
+    );
 }
-
-// ── Modal close helpers ───────────────────────────────────────────────────────
 
 function initServiceModalListeners() {
     document.getElementById('serviceModal')?.addEventListener('click', e => {
         if (e.target === e.currentTarget) closeServiceModal();
     });
-
     document.getElementById('svcDeleteConfirmModal')?.addEventListener('click', e => {
         if (e.target === e.currentTarget) closeSvcDeleteConfirm();
     });
-
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') {
-            closeServiceModal();
-            closeSvcDeleteConfirm();
-        }
+        if (e.key === 'Escape') { closeServiceModal(); closeSvcDeleteConfirm(); }
     });
 }
 
@@ -422,28 +446,8 @@ document.addEventListener('DOMContentLoaded', initServiceModalListeners);
 
 let currentMessageId = null;
 let _msgDeleteId     = null;
-
-// ── Status filter & search ────────────────────────────────────────────────────
-
 let _currentMsgFilter = 'all';
 
-function countMessageBadges() {
-    const rows = document.querySelectorAll('#messagesTable tbody tr:not(#msgNoResults)');
-    const c = { all: 0, unread: 0, read: 0, replied: 0 };
-
-    rows.forEach(row => {
-        const s = row.getAttribute('data-status');
-        c.all++;
-        if (c[s] !== undefined) c[s]++;
-    });
-
-    document.getElementById('countAll')?.     (el => el.textContent = `(${c.all})`);
-    document.getElementById('countUnread')?.  (el => el.textContent = `(${c.unread})`);
-    document.getElementById('countRead')?.    (el => el.textContent = `(${c.read})`);
-    document.getElementById('countReplied')?. (el => el.textContent = `(${c.replied})`);
-}
-
-// Simpler badge count that works without optional chaining on getElementById
 function setMsgBadgeText(id, text) {
     const el = document.getElementById(id);
     if (el) el.textContent = text;
@@ -472,10 +476,8 @@ function filterByStatus(btn, filter) {
 
 function applyMessageFilters(query) {
     query = (query ?? document.getElementById('msgSearchInput')?.value ?? '').toLowerCase().trim();
-
     const rows = document.querySelectorAll('#messagesTable tbody tr:not(#msgNoResults)');
     let visible = 0;
-
     rows.forEach(row => {
         const searchMatch = query === '' || (row.getAttribute('data-search') ?? '').includes(query);
         const statusMatch = _currentMsgFilter === 'all' || row.getAttribute('data-status') === _currentMsgFilter;
@@ -483,12 +485,9 @@ function applyMessageFilters(query) {
         row.style.display = show ? '' : 'none';
         if (show) visible++;
     });
-
     const noResults = document.getElementById('msgNoResults');
     if (noResults) noResults.style.display = visible === 0 ? '' : 'none';
 }
-
-// ── Delete confirm modal ──────────────────────────────────────────────────────
 
 function openMsgDeleteConfirm(id, name) {
     _msgDeleteId = id;
@@ -507,8 +506,6 @@ function executeMsgDelete() {
     }
 }
 
-// ── View message modal ────────────────────────────────────────────────────────
-
 function viewMessage(id) {
     currentMessageId = id;
     document.getElementById('mmReplyTextarea').value = '';
@@ -516,23 +513,14 @@ function viewMessage(id) {
     fetch(`../backend/get_message.php?id=${id}`)
         .then(r => r.json())
         .then(data => {
-            if (!data.success) {
-                showToast('Could not load message.', 'danger');
-                return;
-            }
-
+            if (!data.success) { showToast('Could not load message.', 'danger'); return; }
             const msg = data.data;
-
             document.getElementById('mmAvatar').textContent    = (msg.full_name || '?').trim().charAt(0).toUpperCase();
             document.getElementById('mmName').textContent      = msg.full_name || '—';
             document.getElementById('mmEmailSub').textContent  = msg.email    || '—';
             document.getElementById('mmReplyToTag').textContent = msg.email   || '—';
 
-            const date = new Date(msg.created_at).toLocaleString('en-US', {
-                dateStyle: 'medium',
-                timeStyle: 'short',
-            });
-
+            const date = new Date(msg.created_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
             const isReplied = msg.is_replied == 1;
             const isRead    = msg.is_read    == 1;
 
@@ -542,9 +530,7 @@ function viewMessage(id) {
             else               { sc = 'unread';  si = 'fa-circle'; sl = 'Unread';  }
 
             let chips = `
-                <span class="mm-meta-chip mm-status-chip ${sc}">
-                    <i class="fas ${si}" style="font-size:.65rem;"></i> ${sl}
-                </span>
+                <span class="mm-meta-chip mm-status-chip ${sc}"><i class="fas ${si}" style="font-size:.65rem;"></i> ${sl}</span>
                 <span class="mm-meta-chip"><i class="fas fa-clock"></i> ${escHtml(date)}</span>
                 <span class="mm-meta-chip"><i class="fas fa-envelope"></i> ${escHtml(msg.email)}</span>
             `;
@@ -556,7 +542,6 @@ function viewMessage(id) {
             document.getElementById('messageModal').classList.add('active');
             document.body.style.overflow = 'hidden';
 
-            // Mark the row as read in the table
             document.querySelectorAll('#messagesTable tbody tr').forEach(row => {
                 if (row.querySelector(`[onclick="viewMessage(${id})"]`)) {
                     const badge = row.querySelector('.status-badge');
@@ -567,7 +552,8 @@ function viewMessage(id) {
                     }
                 }
             });
-        });
+        })
+        .catch(() => showToast('Network error loading message.', 'danger'));
 }
 
 function closeMessageModal() {
@@ -575,8 +561,6 @@ function closeMessageModal() {
     document.body.style.overflow = '';
     currentMessageId = null;
 }
-
-// ── Reply ─────────────────────────────────────────────────────────────────────
 
 function sendReply() {
     const body = document.getElementById('mmReplyTextarea').value.trim();
@@ -599,15 +583,12 @@ function sendReply() {
         .then(text => {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Reply';
-
             try {
                 const data = JSON.parse(text);
                 if (data.success) {
                     const id = currentMessageId;
                     closeMessageModal();
                     showToast(data.message, 'success');
-
-                    // Update the row badge in the table
                     document.querySelectorAll('#messagesTable tbody tr').forEach(row => {
                         if (row.querySelector(`[onclick="viewMessage(${id})"]`)) {
                             const badge = row.querySelector('.status-badge');
@@ -632,30 +613,20 @@ function sendReply() {
         });
 }
 
-// ── Modal close helpers ───────────────────────────────────────────────────────
-
 function initMessagesPageListeners() {
     document.getElementById('messageModal')?.addEventListener('click', e => {
         if (e.target === e.currentTarget) closeMessageModal();
     });
-
     document.getElementById('msgDeleteConfirmModal')?.addEventListener('click', e => {
         if (e.target === e.currentTarget) closeMsgDeleteConfirm();
     });
-
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') {
-            closeMessageModal();
-            closeMsgDeleteConfirm();
-        }
+        if (e.key === 'Escape') { closeMessageModal(); closeMsgDeleteConfirm(); }
     });
-
     initMessageBadges();
 }
 
 document.addEventListener('DOMContentLoaded', initMessagesPageListeners);
-
-// ── Utility ───────────────────────────────────────────────────────────────────
 
 function escHtml(str) {
     if (!str) return '';
@@ -669,10 +640,7 @@ function escHtml(str) {
    6. SUPPLIES PAGE
    ============================================================================= */
 
-// ── JS-driven pagination (works correctly with category filter) ───────────────
-
 const SUP_PER_PAGE = 10;
-
 let _supCurrentCat   = 'all';
 let _supCurrentPage  = 1;
 let _supMatchingRows = [];
@@ -698,66 +666,48 @@ function supRenderPage() {
     const total      = _supMatchingRows.length;
     const totalPages = Math.max(1, Math.ceil(total / SUP_PER_PAGE));
 
-    // Clamp page
     if (_supCurrentPage > totalPages) _supCurrentPage = totalPages;
     if (_supCurrentPage < 1)          _supCurrentPage = 1;
 
     const start = (_supCurrentPage - 1) * SUP_PER_PAGE;
     const end   = start + SUP_PER_PAGE;
 
-    // Hide all rows, then show only the current page slice
     supGetAllRows().forEach(r => r.style.display = 'none');
     _supMatchingRows.forEach((r, i) => {
         r.style.display = (i >= start && i < end) ? '' : 'none';
     });
 
-    // No-results message
     const noRes = document.getElementById('supNoResults');
     if (noRes) noRes.style.display = total === 0 ? '' : 'none';
 
-    // Pagination bar
     const bar    = document.getElementById('supPaginationBar');
     const infoEl = document.getElementById('supPagInfo');
     const btnsEl = document.getElementById('supPagBtns');
     if (!bar) return;
 
-    if (total === 0) {
-        bar.style.display = 'none';
-        return;
-    }
+    if (total === 0) { bar.style.display = 'none'; return; }
 
     bar.style.display = 'flex';
     infoEl.innerHTML  = `Showing <strong>${start + 1}–${Math.min(end, total)}</strong> of <strong>${total}</strong> supplies`;
 
     btnsEl.innerHTML = '';
-
-    // Prev button
     const prevBtn = supMakePagBtn('<i class="fas fa-chevron-left"></i>', _supCurrentPage <= 1, () => supGoToPage(_supCurrentPage - 1));
     if (_supCurrentPage <= 1) prevBtn.classList.add('disabled');
     btnsEl.appendChild(prevBtn);
 
-    // Page number buttons
     const range  = 2;
     const pStart = Math.max(1, _supCurrentPage - range);
     const pEnd   = Math.min(totalPages, _supCurrentPage + range);
 
-    if (pStart > 1) {
-        btnsEl.appendChild(supMakePagBtn('1', false, () => supGoToPage(1)));
-        if (pStart > 2) btnsEl.appendChild(supMakeEllipsis());
-    }
-
+    if (pStart > 1) { btnsEl.appendChild(supMakePagBtn('1', false, () => supGoToPage(1))); if (pStart > 2) btnsEl.appendChild(supMakeEllipsis()); }
     for (let p = pStart; p <= pEnd; p++) {
         const btn = supMakePagBtn(String(p), false, () => supGoToPage(p));
         if (p === _supCurrentPage) btn.classList.add('active');
         btnsEl.appendChild(btn);
     }
-
     if (pEnd < totalPages - 1) btnsEl.appendChild(supMakeEllipsis());
-    if (pEnd < totalPages) {
-        btnsEl.appendChild(supMakePagBtn(String(totalPages), false, () => supGoToPage(totalPages)));
-    }
+    if (pEnd < totalPages) btnsEl.appendChild(supMakePagBtn(String(totalPages), false, () => supGoToPage(totalPages)));
 
-    // Next button
     const nextBtn = supMakePagBtn('<i class="fas fa-chevron-right"></i>', _supCurrentPage >= totalPages, () => supGoToPage(_supCurrentPage + 1));
     if (_supCurrentPage >= totalPages) nextBtn.classList.add('disabled');
     btnsEl.appendChild(nextBtn);
@@ -784,8 +734,6 @@ function supGoToPage(p) {
     supRenderPage();
 }
 
-// ── Tab switching ─────────────────────────────────────────────────────────────
-
 function switchSupTab(btn, cat) {
     document.querySelectorAll('.sup-tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
@@ -803,11 +751,9 @@ function switchSupTab(btn, cat) {
     supView.style.display = '';
 
     _supCurrentCat  = cat;
-    _supCurrentPage = 1;  // reset on every tab switch
+    _supCurrentPage = 1;
     supApplyFilters();
 }
-
-// ── Supply modal ──────────────────────────────────────────────────────────────
 
 function openAddSupplyModal() {
     document.getElementById('supplyModalTitle').innerText = 'Add New Supply';
@@ -826,7 +772,6 @@ function closeSupplyModal() {
 function previewSupplyImg(input) {
     const preview = document.getElementById('supImgPreview');
     preview.innerHTML = '';
-
     if (input.files && input.files[0]) {
         const reader = new FileReader();
         reader.onload = e => {
@@ -842,11 +787,7 @@ function editSupply(id) {
     fetch(`../backend/get_supply.php?id=${id}`)
         .then(r => r.json())
         .then(data => {
-            if (!data.success) {
-                alert('Could not load supply.');
-                return;
-            }
-
+            if (!data.success) { showToast('Could not load supply.', 'danger'); return; }
             const s = data.data;
             document.getElementById('supplyModalTitle').innerText  = 'Edit Supply';
             document.getElementById('supplyId').value              = s.id;
@@ -860,7 +801,6 @@ function editSupply(id) {
 
             const preview = document.getElementById('supImgPreview');
             preview.innerHTML = '';
-
             if (s.image_path) {
                 const img = document.createElement('img');
                 img.src   = window.UPLOADS_URL + s.image_path;
@@ -868,37 +808,45 @@ function editSupply(id) {
                 img.onerror = () => preview.innerHTML = '';
                 preview.appendChild(img);
             }
-
             document.getElementById('supplyModal').classList.add('active');
-        });
+        })
+        .catch(() => showToast('Network error loading supply.', 'danger'));
 }
 
 function submitSupplyForm(e) {
     e.preventDefault();
 
+    const supName = document.getElementById('supName').value.trim();
+    const catId   = document.getElementById('supCategory').value;
+
+    if (!catId) {
+        showToast('Please select a category.', 'danger');
+        document.getElementById('supCategory').focus();
+        return;
+    }
+    if (!supName) {
+        showToast('Supply name is required.', 'danger');
+        document.getElementById('supName').focus();
+        return;
+    }
+
     const btn = document.getElementById('supplySubmitBtn');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
 
-    fetch('../backend/save_supply.php', { method: 'POST', body: new FormData(document.getElementById('supplyForm')) })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                window.location.href = 'dashboard.php?page=supplies';
-            } else {
-                alert(`Error: ${data.message}`);
-                btn.disabled = false;
-                btn.innerHTML = 'Save Supply';
-            }
-        })
-        .catch(() => {
-            alert('Network error.');
+    adminFetch(
+        '../backend/save_supply.php',
+        new FormData(document.getElementById('supplyForm')),
+        (data) => {
+            window.location.href = 'dashboard.php?page=supplies';
+        },
+        (errMsg) => {
+            showToast(errMsg, 'danger');
             btn.disabled = false;
             btn.innerHTML = 'Save Supply';
-        });
+        }
+    );
 }
-
-// ── Category modal ────────────────────────────────────────────────────────────
 
 function openAddCategoryModal() {
     document.getElementById('categoryModalTitle').innerText = 'Add Category';
@@ -915,11 +863,7 @@ function editCategory(id) {
     fetch(`../backend/get_category.php?id=${id}`)
         .then(r => r.json())
         .then(data => {
-            if (!data.success) {
-                alert('Could not load category.');
-                return;
-            }
-
+            if (!data.success) { showToast('Could not load category.', 'danger'); return; }
             const c = data.data;
             document.getElementById('categoryModalTitle').innerText = 'Edit Category';
             document.getElementById('categoryId').value             = c.id;
@@ -928,24 +872,35 @@ function editCategory(id) {
             document.getElementById('catOrder').value               = c.sort_order;
             document.getElementById('catActive').checked            = c.is_active == 1;
             document.getElementById('categoryModal').classList.add('active');
-        });
+        })
+        .catch(() => showToast('Network error loading category.', 'danger'));
 }
 
 function submitCategoryForm(e) {
     e.preventDefault();
 
-    fetch('../backend/save_category.php', { method: 'POST', body: new FormData(document.getElementById('categoryForm')) })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                window.location.href = 'dashboard.php?page=supplies';
-            } else {
-                alert(`Error: ${data.message}`);
-            }
-        });
-}
+    const catName = document.getElementById('catName').value.trim();
+    if (!catName) {
+        showToast('Category name is required.', 'danger');
+        document.getElementById('catName').focus();
+        return;
+    }
 
-// ── Supply / Category delete confirms ────────────────────────────────────────
+    const btn = e.submitter || document.querySelector('#categoryForm button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
+
+    adminFetch(
+        '../backend/save_category.php',
+        new FormData(document.getElementById('categoryForm')),
+        (data) => {
+            window.location.href = 'dashboard.php?page=supplies';
+        },
+        (errMsg) => {
+            showToast(errMsg, 'danger');
+            if (btn) { btn.disabled = false; btn.innerHTML = 'Save Category'; }
+        }
+    );
+}
 
 let _delSupId = null;
 let _delCatId = null;
@@ -980,15 +935,12 @@ function executeCatDelete() {
     if (_delCatId) window.location.href = `../backend/delete_category.php?id=${_delCatId}`;
 }
 
-// ── Modal close helpers + init ────────────────────────────────────────────────
-
 function initSuppliesPageListeners() {
     ['supplyModal', 'categoryModal', 'supplyDeleteConfirm', 'catDeleteConfirm'].forEach(id => {
         document.getElementById(id)?.addEventListener('click', function (e) {
             if (e.target === this) this.classList.remove('active');
         });
     });
-
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
             ['supplyModal', 'categoryModal', 'supplyDeleteConfirm', 'catDeleteConfirm'].forEach(id => {
@@ -996,8 +948,6 @@ function initSuppliesPageListeners() {
             });
         }
     });
-
-    // Initial render
     _supCurrentPage = 1;
     _supCurrentCat  = 'all';
     supApplyFilters();
@@ -1009,8 +959,6 @@ document.addEventListener('DOMContentLoaded', initSuppliesPageListeners);
 /* =============================================================================
    7. UPDATES PAGE
    ============================================================================= */
-
-// ── Delete confirm modal ──────────────────────────────────────────────────────
 
 let _updDeleteId = null;
 
@@ -1029,8 +977,6 @@ function executeUpdDelete() {
     if (_updDeleteId) window.location.href = `../backend/delete_update.php?id=${_updDeleteId}`;
 }
 
-// ── Add / Edit update modal ───────────────────────────────────────────────────
-
 function openAddUpdateModal() {
     document.getElementById('updateModalTitle').innerText = 'New Post';
     document.getElementById('updateForm').reset();
@@ -1039,16 +985,10 @@ function openAddUpdateModal() {
     document.getElementById('updExistingImgs').innerHTML = '';
     document.getElementById('updSubmitBtn').disabled = false;
     document.getElementById('updSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Post';
-
-    // Reset char counters
     ['updTitleCount', 'updDescCount'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) {
-            el.textContent = el.textContent.replace(/^\d+/, '0');
-            el.className = 'char-count';
-        }
+        if (el) { el.textContent = el.textContent.replace(/^\d+/, '0'); el.className = 'char-count'; }
     });
-
     document.getElementById('updateModal').classList.add('active');
 }
 
@@ -1059,19 +999,15 @@ function closeUpdateModal() {
 function previewUpdImgs(input) {
     const preview = document.getElementById('updImgPreview');
     preview.innerHTML = '';
-
     if (!input.files || !input.files.length) return;
-
     Array.from(input.files).forEach(file => {
         const reader = new FileReader();
         reader.onload = e => {
             const wrap = document.createElement('div');
             wrap.style.cssText = 'position:relative;display:inline-block;';
-
             const img = document.createElement('img');
             img.src = e.target.result;
             img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--primary-color);display:block;';
-
             wrap.appendChild(img);
             preview.appendChild(wrap);
         };
@@ -1083,11 +1019,7 @@ function editUpdate(id) {
     fetch(`../backend/get_update.php?id=${id}`)
         .then(r => r.json())
         .then(data => {
-            if (!data.success) {
-                alert('Could not load post.');
-                return;
-            }
-
+            if (!data.success) { showToast('Could not load post.', 'danger'); return; }
             const u = data.data;
             document.getElementById('updateModalTitle').innerText  = 'Edit Post';
             document.getElementById('updateId').value              = u.id;
@@ -1099,77 +1031,77 @@ function editUpdate(id) {
             document.getElementById('updSubmitBtn').innerHTML      = '<i class="fas fa-save"></i> Save Post';
             document.getElementById('updImgPreview').innerHTML     = '';
 
-            // Show existing images
             const existingWrap = document.getElementById('updExistingImgs');
             existingWrap.innerHTML = '';
-
             const imgs = u.all_images ?? (u.image_path ? [`${window.UPLOADS_URL}${u.image_path}`] : []);
             if (imgs.length) {
                 const label = document.createElement('p');
                 label.style.cssText = 'font-size:.8rem;color:var(--text-light);margin:0 0 .4rem;font-weight:600;';
                 label.textContent = `Current photos (${imgs.length}):`;
                 existingWrap.appendChild(label);
-
                 const row = document.createElement('div');
                 row.style.cssText = 'display:flex;flex-wrap:wrap;gap:.5rem;';
-
                 imgs.forEach(src => {
                     const thumb = document.createElement('img');
                     thumb.src = src;
                     thumb.style.cssText = 'width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border-color);';
                     row.appendChild(thumb);
                 });
-
                 existingWrap.appendChild(row);
             }
 
-            // Trigger char counter updates
             ['updTitle', 'updDescription'].forEach(elId => {
                 document.getElementById(elId)?.dispatchEvent(new Event('input'));
             });
-
             document.getElementById('updateModal').classList.add('active');
-        });
+        })
+        .catch(() => showToast('Network error loading post.', 'danger'));
 }
 
 function submitUpdateForm(e) {
     e.preventDefault();
 
+    const title = document.getElementById('updTitle').value.trim();
+    const desc  = document.getElementById('updDescription').value.trim();
+
+    if (!title) {
+        showToast('Post title is required.', 'danger');
+        document.getElementById('updTitle').focus();
+        return;
+    }
+    if (!desc) {
+        showToast('Description is required.', 'danger');
+        document.getElementById('updDescription').focus();
+        return;
+    }
+
     const btn = document.getElementById('updSubmitBtn');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
 
-    fetch('../backend/save_update.php', { method: 'POST', body: new FormData(document.getElementById('updateForm')) })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                window.location.href = 'dashboard.php?page=updates';
-            } else {
-                alert(`Error: ${data.message}`);
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-save"></i> Save Post';
-            }
-        })
-        .catch(() => {
-            alert('Network error.');
+    adminFetch(
+        '../backend/save_update.php',
+        new FormData(document.getElementById('updateForm')),
+        (data) => {
+            window.location.href = 'dashboard.php?page=updates';
+        },
+        (errMsg) => {
+            showToast(errMsg, 'danger');
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-save"></i> Save Post';
-        });
+        }
+    );
 }
-
-// ── Character counter binding ─────────────────────────────────────────────────
 
 function bindCharCount(inputId, countId, max) {
     const el  = document.getElementById(inputId);
     const cnt = document.getElementById(countId);
     if (!el || !cnt) return;
-
     function update() {
         const n = el.value.length;
         cnt.textContent = `${n} / ${max}`;
         cnt.className   = `char-count${n > max * .85 ? ' warn' : ''}`;
     }
-
     el.addEventListener('input', update);
     update();
 }
@@ -1177,20 +1109,14 @@ function bindCharCount(inputId, countId, max) {
 function initUpdatesPage() {
     bindCharCount('updTitle',       'updTitleCount', 120);
     bindCharCount('updDescription', 'updDescCount',  400);
-
     document.getElementById('updateModal')?.addEventListener('click', e => {
         if (e.target === e.currentTarget) closeUpdateModal();
     });
-
     document.getElementById('updDeleteConfirmModal')?.addEventListener('click', e => {
         if (e.target === e.currentTarget) closeUpdDeleteConfirm();
     });
-
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') {
-            closeUpdateModal();
-            closeUpdDeleteConfirm();
-        }
+        if (e.key === 'Escape') { closeUpdateModal(); closeUpdDeleteConfirm(); }
     });
 }
 
@@ -1205,10 +1131,8 @@ function statsLivePreview(id, card) {
     const val    = card.querySelector('input[name="values[]"]').value   || '0';
     const suffix = card.querySelector('input[name="suffixes[]"]').value || '';
     const label  = card.querySelector('input[name="labels[]"]').value   || '';
-
     const prev = document.getElementById(`preview_${id}`);
     if (!prev) return;
-
     prev.querySelector('.stats-preview-number').textContent = val + suffix;
     prev.querySelector('.stats-preview-label').textContent  = label;
 }
@@ -1227,90 +1151,66 @@ function saveStats(e) {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
 
-    fetch('../backend/save_stats.php', { method: 'POST', body: new FormData(document.getElementById('statsForm')) })
-        .then(r => r.json())
-        .then(data => {
+    adminFetch(
+        '../backend/save_stats.php',
+        new FormData(document.getElementById('statsForm')),
+        (data) => {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-save"></i> Save All Stats';
-
-            if (data.success) {
-                showToast('Stats updated successfully. Changes are now live on the website.', 'success');
-            } else {
-                showToast(`Failed to save: ${data.message}`, 'danger');
-            }
-        })
-        .catch(() => {
+            showToast('Stats updated successfully. Changes are now live on the website.', 'success');
+        },
+        (errMsg) => {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-save"></i> Save All Stats';
-            showToast('Network error. Please try again.', 'danger');
-        });
+            showToast(`Failed to save: ${errMsg}`, 'danger');
+        }
+    );
 }
 
 
 /* =============================================================================
-   9. SHARED UTILITIES  (kept from original admin.js)
+   9. SHARED UTILITIES
    ============================================================================= */
 
-// Image preview helper
 function previewImage(inputId, previewId) {
     const input   = document.getElementById(inputId);
     const preview = document.getElementById(previewId);
     if (!input || !input.files || !input.files[0]) return;
-
     const reader = new FileReader();
     reader.onload = e => {
-        if (preview) {
-            preview.src = e.target.result;
-            preview.style.display = 'block';
-        }
+        if (preview) { preview.src = e.target.result; preview.style.display = 'block'; }
     };
     reader.readAsDataURL(input.files[0]);
 }
 
-// Table search filter
 function filterTable(inputId, tableId) {
     const input = document.getElementById(inputId);
     const table = document.getElementById(tableId);
     if (!input || !table) return;
-
     const filter = input.value.toUpperCase();
     table.querySelectorAll('tbody tr').forEach(row => {
         row.style.display = row.textContent.toUpperCase().includes(filter) ? '' : 'none';
     });
 }
 
-// Export table to CSV
 function exportTableToCSV(tableId, filename = 'export.csv') {
     const table = document.getElementById(tableId);
     if (!table) return;
-
     const csv = [];
     table.querySelectorAll('tr').forEach(row => {
-        const cols    = row.querySelectorAll('td, th');
-        const csvRow  = Array.from(cols).map(col => `"${col.innerText.replace(/"/g, '""')}"`);
+        const cols   = row.querySelectorAll('td, th');
+        const csvRow = Array.from(cols).map(col => `"${col.innerText.replace(/"/g, '""')}"`);
         csv.push(csvRow.join(','));
     });
-
-    downloadCSV(csv.join('\n'), filename);
-}
-
-function downloadCSV(csv, filename) {
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
     const url  = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
-
-    link.href     = url;
-    link.download = filename;
-    link.click();
-
+    link.href = url; link.download = filename; link.click();
     window.URL.revokeObjectURL(url);
 }
 
-// Bootstrap tooltip init
 document.addEventListener('DOMContentLoaded', () => {
     if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
-        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
-            new bootstrap.Tooltip(el);
-        });
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
     }
 });

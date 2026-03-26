@@ -1,4 +1,7 @@
 <?php
+ob_start();
+header('Content-Type: application/json');
+
 require_once '../config/database.php';
 require_once '../includes/functions.php';
 requireLogin();
@@ -41,5 +44,5 @@ try {
     $response['message'] = $e->getMessage();
 }
 
-header('Content-Type: application/json');
+ob_end_clean();
 echo json_encode($response);
