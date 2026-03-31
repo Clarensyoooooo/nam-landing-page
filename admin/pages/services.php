@@ -1,5 +1,4 @@
 <?php
-// Services Management Page
 $services = getAllServices($conn, false);
 displayAlert();
 
@@ -14,10 +13,7 @@ $admin_uploads_url = rtrim(str_replace('/admin', '', rtrim(BASE_URL, '/')), '/')
 $total_items       = count($services);
 ?>
 
-<!-- Pass uploads URL to JS -->
-<script>
-    window.UPLOADS_URL = '<?php echo $admin_uploads_url; ?>';
-</script>
+<script>window.UPLOADS_URL = '<?php echo $admin_uploads_url; ?>';</script>
 
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem;">
     <h2>
@@ -36,63 +32,54 @@ $total_items       = count($services);
         <table class="admin-table">
             <thead>
                 <tr>
-                    <th>Order</th>
-                    <th>Service Name</th>
-                    <th>Status</th>
-                    <th>Created</th>
-                    <th>Actions</th>
+                    <th>Order</th><th>Service Name</th><th>Status</th><th>Created</th><th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($services as $service): ?>
-                    <tr>
-                        <td><?php echo $service['sort_order']; ?></td>
-                        <td><?php echo sanitize($service['service_name']); ?></td>
-                        <td>
-                            <span class="badge" style="background-color:<?php echo $service['is_active'] ? '#28A745' : '#6C757D'; ?>;">
-                                <?php echo $service['is_active'] ? 'Active' : 'Inactive'; ?>
-                            </span>
-                        </td>
-                        <td><?php echo formatDate($service['created_at']); ?></td>
-                        <td>
-                            <div class="admin-actions">
-                                <button class="btn-edit" onclick="editService(<?php echo $service['id']; ?>)">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="btn-delete" onclick="openSvcDeleteConfirm(<?php echo $service['id']; ?>, '<?php echo addslashes(sanitize($service['service_name'])); ?>')">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
+                <tr>
+                    <td><?php echo $service['sort_order']; ?></td>
+                    <td><?php echo sanitize($service['service_name']); ?></td>
+                    <td>
+                        <span class="badge" style="background-color:<?php echo $service['is_active'] ? '#28A745' : '#6C757D'; ?>;">
+                            <?php echo $service['is_active'] ? 'Active' : 'Inactive'; ?>
+                        </span>
+                    </td>
+                    <td><?php echo formatDate($service['created_at']); ?></td>
+                    <td>
+                        <div class="admin-actions">
+                            <button class="btn-edit" onclick="editService(<?php echo $service['id']; ?>)"><i class="fas fa-edit"></i></button>
+                            <button class="btn-delete" onclick="openSvcDeleteConfirm(<?php echo $service['id']; ?>, '<?php echo addslashes(sanitize($service['service_name'])); ?>')"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
     <?php else: ?>
         <p style="text-align:center; color:var(--text-light); padding:2rem;">
-            <i class="fas fa-inbox"></i> No services yet.
-            <a href="#" onclick="openAddServiceModal(); return false;">Add one now</a>
+            <i class="fas fa-inbox"></i> No services yet. <a href="#" onclick="openAddServiceModal(); return false;">Add one now</a>
         </p>
     <?php endif; ?>
 </div>
 
-<!-- ── Add / Edit Service Modal ── -->
+<!-- Add / Edit Service Modal -->
 <div class="modal-overlay" id="serviceModal">
     <div class="modal-content" style="max-width:580px;max-height:90vh;overflow-y:auto;">
         <div class="modal-header">
             <h2 id="modalTitle">Add New Service</h2>
             <button class="modal-close" onclick="closeServiceModal()">&times;</button>
         </div>
-        <form id="serviceForm" enctype="multipart/form-data" onsubmit="submitServiceForm(event)">
+        <form id="serviceForm" enctype="multipart/form-data">
             <input type="hidden" id="serviceId" name="service_id" value="">
 
             <div class="form-group">
                 <label for="serviceName">Service Name</label>
-                <input type="text" id="serviceName" name="service_name" class="form-control" required>
+                <input type="text" id="serviceName" name="service_name" class="form-control" placeholder="Enter service name">
             </div>
             <div class="form-group">
                 <label for="serviceDescription">Description</label>
-                <textarea id="serviceDescription" name="description" class="form-control" rows="4" required></textarea>
+                <textarea id="serviceDescription" name="description" class="form-control" rows="4" placeholder="Describe this service"></textarea>
             </div>
 
             <!-- Existing images (shown in edit mode) -->
@@ -117,44 +104,31 @@ $total_items       = count($services);
                 <input type="number" id="serviceOrder" name="sort_order" class="form-control" value="0" min="0">
             </div>
             <div class="form-group">
-                <label>
-                    <input type="checkbox" id="serviceActive" name="is_active" value="1" checked>
-                    Active
-                </label>
+                <label><input type="checkbox" id="serviceActive" name="is_active" value="1" checked> Active</label>
             </div>
 
             <div class="modal-footer">
                 <button type="button" class="btn-secondary-main" style="background-color:#6C757D;color:white;border:none;" onclick="closeServiceModal()">Cancel</button>
-                <button type="submit" class="btn-add">Save Service</button>
+                <button type="button" id="svcSaveBtn" class="btn-add" onclick="submitServiceForm(event)">Save Service</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- ── Delete Confirmation Modal ── -->
+<!-- Delete Confirmation Modal -->
 <div class="confirm-modal-overlay" id="svcDeleteConfirmModal">
     <div class="confirm-modal-box">
         <div class="confirm-modal-header">
             <div class="confirm-modal-icon"><i class="fas fa-trash-alt"></i></div>
-            <div>
-                <h3>Delete Service</h3>
-                <p>This action cannot be undone</p>
-            </div>
+            <div><h3>Delete Service</h3><p>This action cannot be undone</p></div>
         </div>
         <div class="confirm-modal-body">
             <p>Are you sure you want to delete <strong id="deleteSvcName">this service</strong> and all its images?</p>
-            <div class="confirm-warning">
-                <i class="fas fa-exclamation-triangle"></i>
-                All associated images will be permanently removed.
-            </div>
+            <div class="confirm-warning"><i class="fas fa-exclamation-triangle"></i> All associated images will be permanently removed.</div>
         </div>
         <div class="confirm-modal-footer">
-            <button class="confirm-btn confirm-btn-cancel" onclick="closeSvcDeleteConfirm()">
-                <i class="fas fa-times"></i> Cancel
-            </button>
-            <button class="confirm-btn confirm-btn-delete" onclick="executeSvcDelete()">
-                <i class="fas fa-trash-alt"></i> Yes, Delete
-            </button>
+            <button class="confirm-btn confirm-btn-cancel" onclick="closeSvcDeleteConfirm()"><i class="fas fa-times"></i> Cancel</button>
+            <button class="confirm-btn confirm-btn-delete" onclick="executeSvcDelete()"><i class="fas fa-trash-alt"></i> Yes, Delete</button>
         </div>
     </div>
 </div>

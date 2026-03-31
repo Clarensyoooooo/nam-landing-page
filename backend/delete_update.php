@@ -20,7 +20,6 @@ if (!$update) {
     exit();
 }
 
-// ── Collect every image path for this post ───────────────────────────────────
 $image_paths = [];
 
 // 1. All images in update_images table

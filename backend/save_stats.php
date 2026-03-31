@@ -1,10 +1,16 @@
 <?php
 ob_start();
-header('Content-Type: application/json');
 
 require_once '../config/database.php';
 require_once '../includes/functions.php';
-requireLogin();
+
+header('Content-Type: application/json');
+
+if (!isLoggedIn()) {
+    ob_end_clean();
+    echo json_encode(['success' => false, 'message' => 'Session expired. Please log in again.']);
+    exit();
+}
 
 $response = ['success' => false, 'message' => ''];
 
@@ -14,36 +20,38 @@ try {
     $values   = $_POST['values']   ?? [];
     $suffixes = $_POST['suffixes'] ?? [];
     $orders   = $_POST['orders']   ?? [];
-    $actives  = $_POST['actives']  ?? [];
+    $actives  = $_POST['actives']  ?? [];   // keyed by stat id
 
-    if (empty($ids)) throw new Exception('No stats data received.');
+    if (empty($ids)) {
+        throw new Exception('No stats data received.');
+    }
 
-    $stmt = $conn->prepare("
-        UPDATE site_stats
-        SET label = ?, value = ?, suffix = ?, sort_order = ?, is_active = ?
-        WHERE id = ?
-    ");
+    $stmt = $conn->prepare(
+        "UPDATE site_stats
+         SET label = ?, value = ?, suffix = ?, sort_order = ?, is_active = ?
+         WHERE id = ?"
+    );
 
     foreach ($ids as $i => $id) {
         $id        = intval($id);
         $label     = sanitize($labels[$i] ?? '');
         $value     = intval($values[$i]   ?? 0);
-
-        // Use strip_tags only — NOT sanitize() which converts + to &#43; etc.
-        $suffix    = strip_tags(trim($suffixes[$i] ?? ''));
-
+        $suffix    = strip_tags(trim($suffixes[$i] ?? ''));   // keep +, k+, etc. intact
         $order     = intval($orders[$i]   ?? $i);
         $is_active = isset($actives[$id]) ? 1 : 0;
 
-        if (empty($label)) continue;
+        if ($label === '') {
+            continue;   // skip blank rows silently
+        }
 
         $stmt->bind_param('sissii', $label, $value, $suffix, $order, $is_active, $id);
-        if (!$stmt->execute()) throw new Exception($stmt->error);
+        $stmt->execute();
     }
 
     $stmt->close();
+
     $response['success'] = true;
-    $response['message'] = 'Stats saved.';
+    $response['message'] = 'Stats saved successfully.';
 
 } catch (Exception $e) {
     $response['message'] = $e->getMessage();

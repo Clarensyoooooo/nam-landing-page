@@ -1,35 +1,4 @@
-/* ════════════════════════════════════════════════════════════════
-   updates.js
 
-   RULES:
-   1. All posts always visible.
-   2. Normal layout: rows of 3.
-   3. When a card is clicked it expands IN PLACE (stays in its row).
-   4. That row becomes: [ expanded card (span 2) ] [ next post ]
-   5. The post that was originally beside the expanded card in that
-      row gets pushed down to the NEXT row, joining the cards below.
-   6. "Next post" = index + 1, wraps to index 0 if last post.
-
-   Example (6 posts, 2 rows):
-   Normal:
-     row1: [p1][p2][p3]
-     row2: [p4][p5][p6]
-
-   Click p1 (row1, idx0):  neighbour = p2
-     row1: [p1 expanded][p2]       ← p3 pushed down
-     row2: [p3][p4][p5]            ← p3 joins existing row2 cards
-     row3: [p6]
-
-   Click p4 (row2, idx3):  neighbour = p5
-     row1: [p1][p2][p3]            ← row1 unchanged
-     row2: [p4 expanded][p5]       ← p6 pushed down
-     row3: [p6]
-
-   Click p6 (row2, idx5):  neighbour = p1 (wrap)
-     row1: [p2][p3][p4]            ← p1 moved out of row1
-     row2: [p6 expanded][p1]       ← p5 pushed down
-     row3: [p5]
-   ════════════════════════════════════════════════════════════════ */
 (function () {
 
     var outerGrid = document.getElementById('updGrid');

@@ -29,18 +29,13 @@
 
     toggleBtn.addEventListener('click', openSidebar);
     overlay.addEventListener('click', closeSidebar);
-
     if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
 
     sidebar.querySelectorAll('.admin-nav-link').forEach(link => {
-        link.addEventListener('click', () => {
-            if (window.innerWidth <= 768) closeSidebar();
-        });
+        link.addEventListener('click', () => { if (window.innerWidth <= 768) closeSidebar(); });
     });
 
-    document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') closeSidebar();
-    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar(); });
 }());
 
 
@@ -72,7 +67,7 @@
         const toast = document.createElement('div');
         toast.className = `adm-toast toast-${type}`;
         toast.innerHTML = `
-            <div class="adm-toast-icon"><i class="${icons[type]}"></i></div>
+            <div class="adm-toast-icon"><i class="${icons[type] ?? icons.info}"></i></div>
             <div class="adm-toast-body">
                 <div class="adm-toast-title">${titles[type] ?? 'Notice'}</div>
                 <div class="adm-toast-msg">${message}</div>
@@ -82,7 +77,6 @@
                 <div class="adm-toast-progress-fill"></div>
             </div>
         `;
-
         container.appendChild(toast);
 
         toast.querySelector('.adm-toast-close').addEventListener('click', () => removeToast(toast));
@@ -99,7 +93,6 @@
             clearTimeout(timer);
             fill.style.transitionDuration = '0ms';
         });
-
         toast.addEventListener('mouseleave', () => {
             const remaining = (parseFloat(fill.style.width) / 100) * DURATION;
             fill.style.transition = `width ${remaining}ms linear`;
@@ -113,32 +106,45 @@
         toast.addEventListener('animationend', () => toast.parentNode?.removeChild(toast));
     }
 
-    // Pick up PHP setAlert() messages rendered via displayAlert()
+    // ── Show any pending toast stored in sessionStorage (after redirect) ──
     document.addEventListener('DOMContentLoaded', () => {
+        try {
+            const pending = sessionStorage.getItem('adminToast');
+            if (pending) {
+                sessionStorage.removeItem('adminToast');
+                const { message, type } = JSON.parse(pending);
+                if (message) showToast(message, type || 'success');
+            }
+        } catch (_) {}
+
+        // Also handle legacy PHP setAlert() flash via data attribute
         const el = document.getElementById('phpAlertData');
-        if (!el) return;
-
-        const msg  = el.getAttribute('data-message');
-        const type = el.getAttribute('data-type') || 'info';
-        if (msg) showToast(msg, type);
-
-        el.parentNode.removeChild(el);
+        if (el) {
+            const msg  = el.getAttribute('data-message');
+            const type = el.getAttribute('data-type') || 'info';
+            if (msg) showToast(msg, type);
+            el.parentNode.removeChild(el);
+        }
     });
 }());
 
 
 /* =============================================================================
    SHARED FETCH HELPER
-   Wraps fetch + JSON parse with consistent error handling.
    ============================================================================= */
 
+/**
+ * adminFetch — POST form data, parse JSON, call onSuccess or onError.
+ *
+ * On success the backend returns { success: true, message: "..." }.
+ * Callers that need to redirect after success should call
+ *   redirectWithToast(url, message, type)
+ * inside their onSuccess callback.
+ */
 function adminFetch(url, formData, onSuccess, onError) {
     fetch(url, { method: 'POST', body: formData })
         .then(r => {
-            // If response is not ok (redirect happened, session expired, etc.)
-            if (!r.ok) {
-                throw new Error('Server returned status ' + r.status + '. You may need to log in again.');
-            }
+            if (!r.ok) throw new Error('Server returned status ' + r.status + '. You may need to log in again.');
             return r.text();
         })
         .then(text => {
@@ -146,9 +152,8 @@ function adminFetch(url, formData, onSuccess, onError) {
             try {
                 data = JSON.parse(text);
             } catch (e) {
-                // PHP returned non-JSON (HTML error page, notice, warning, redirect)
-                console.error('Non-JSON response from server:', text.substring(0, 300));
-                throw new Error('Unexpected server response. Check PHP error logs. Details: ' + text.substring(0, 120));
+                console.error('Non-JSON response:', text.substring(0, 300));
+                throw new Error('Unexpected server response. Check PHP error logs.');
             }
             if (data.success) {
                 onSuccess(data);
@@ -156,9 +161,18 @@ function adminFetch(url, formData, onSuccess, onError) {
                 onError(data.message || 'An unknown error occurred.');
             }
         })
-        .catch(err => {
-            onError(err.message || 'Network error. Please try again.');
-        });
+        .catch(err => onError(err.message || 'Network error. Please try again.'));
+}
+
+/**
+ * Store a toast message in sessionStorage then redirect.
+ * The toast fires once the new page loads (picked up in initToasts DOMContentLoaded).
+ */
+function redirectWithToast(url, message, type = 'success') {
+    try {
+        sessionStorage.setItem('adminToast', JSON.stringify({ message, type }));
+    } catch (_) {}
+    window.location.href = url;
 }
 
 
@@ -180,9 +194,7 @@ function closeClientDeleteConfirm() {
 }
 
 function executeClientDelete() {
-    if (_clientDeleteId) {
-        window.location.href = `../backend/delete_client.php?id=${_clientDeleteId}`;
-    }
+    if (_clientDeleteId) window.location.href = `../backend/delete_client.php?id=${_clientDeleteId}`;
 }
 
 function openAddClientModal() {
@@ -202,40 +214,27 @@ function editClient(id) {
         .then(data => {
             if (!data.success) { showToast('Could not load client.', 'danger'); return; }
             const c = data.data;
-            document.getElementById('modalTitle').innerText       = 'Edit Client';
-            document.getElementById('clientId').value             = c.id;
-            document.getElementById('clientName').value           = c.client_name;
-            document.getElementById('clientDescription').value    = c.description;
-            document.getElementById('clientOrder').value          = c.sort_order;
-            document.getElementById('clientActive').checked       = c.is_active == 1;
+            document.getElementById('modalTitle').innerText    = 'Edit Client';
+            document.getElementById('clientId').value          = c.id;
+            document.getElementById('clientName').value        = c.client_name;
+            document.getElementById('clientDescription').value = c.description;
+            document.getElementById('clientOrder').value       = c.sort_order;
+            document.getElementById('clientActive').checked    = c.is_active == 1;
             document.getElementById('clientModal').classList.add('active');
         })
         .catch(() => showToast('Network error loading client.', 'danger'));
 }
 
 function submitClientForm(event) {
-    event.preventDefault();
-
-    const clientName = document.getElementById('clientName').value.trim();
-    if (!clientName) {
-        showToast('Client name is required.', 'danger');
-        document.getElementById('clientName').focus();
-        return;
-    }
-
-    const btn = event.submitter || document.querySelector('#clientForm button[type="submit"]');
+    if (event && event.preventDefault) event.preventDefault();
+    const form = document.getElementById('clientForm');
+    const clientName = form.querySelector('[name="client_name"]')?.value ?? '';
+    if (!clientName.trim()) { showToast('Client name is required.', 'danger'); form.querySelector('[name="client_name"]')?.focus(); return; }
+    const btn = document.getElementById('clientSaveBtn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
-
-    adminFetch(
-        '../backend/save_client.php',
-        new FormData(document.getElementById('clientForm')),
-        (data) => {
-            window.location.href = 'dashboard.php?page=clients';
-        },
-        (errMsg) => {
-            showToast(errMsg, 'danger');
-            if (btn) { btn.disabled = false; btn.innerHTML = 'Save Client'; }
-        }
+    adminFetch('../backend/save_client.php', new FormData(form),
+        data => redirectWithToast('dashboard.php?page=clients', data.message, 'success'),
+        errMsg => { showToast(errMsg, 'danger'); if (btn) { btn.disabled = false; btn.innerHTML = 'Save Client'; } }
     );
 }
 
@@ -250,7 +249,6 @@ function initClientModalListeners() {
         if (e.key === 'Escape') { closeClientModal(); closeClientDeleteConfirm(); }
     });
 }
-
 document.addEventListener('DOMContentLoaded', initClientModalListeners);
 
 
@@ -272,9 +270,7 @@ function closeSvcDeleteConfirm() {
 }
 
 function executeSvcDelete() {
-    if (_svcDeleteId) {
-        window.location.href = `../backend/delete_service.php?id=${_svcDeleteId}`;
-    }
+    if (_svcDeleteId) window.location.href = `../backend/delete_service.php?id=${_svcDeleteId}`;
 }
 
 function openAddServiceModal() {
@@ -294,7 +290,6 @@ function closeServiceModal() {
 function previewNewImages(input) {
     const preview = document.getElementById('newImagesPreview');
     preview.innerHTML = '';
-
     Array.from(input.files ?? []).forEach(file => {
         const reader = new FileReader();
         reader.onload = e => {
@@ -320,13 +315,13 @@ function editService(id) {
         .then(data => {
             if (!data.success) { showToast('Could not load service.', 'danger'); return; }
             const s = data.data;
-            document.getElementById('modalTitle').innerText          = 'Edit Service';
-            document.getElementById('serviceId').value               = s.id;
-            document.getElementById('serviceName').value             = s.service_name;
-            document.getElementById('serviceDescription').value      = s.description;
-            document.getElementById('serviceOrder').value            = s.sort_order;
-            document.getElementById('serviceActive').checked         = s.is_active == 1;
-            document.getElementById('newImagesPreview').innerHTML    = '';
+            document.getElementById('modalTitle').innerText       = 'Edit Service';
+            document.getElementById('serviceId').value            = s.id;
+            document.getElementById('serviceName').value          = s.service_name;
+            document.getElementById('serviceDescription').value   = s.description;
+            document.getElementById('serviceOrder').value         = s.sort_order;
+            document.getElementById('serviceActive').checked      = s.is_active == 1;
+            document.getElementById('newImagesPreview').innerHTML = '';
 
             const section = document.getElementById('existingImagesSection');
             const grid    = document.getElementById('existingImagesGrid');
@@ -393,35 +388,17 @@ function deleteServiceImage(imgId, wrapperEl) {
 }
 
 function submitServiceForm(event) {
-    event.preventDefault();
-
-    const serviceName = document.getElementById('serviceName').value.trim();
-    const serviceDesc = document.getElementById('serviceDescription').value.trim();
-
-    if (!serviceName) {
-        showToast('Service name is required.', 'danger');
-        document.getElementById('serviceName').focus();
-        return;
-    }
-    if (!serviceDesc) {
-        showToast('Service description is required.', 'danger');
-        document.getElementById('serviceDescription').focus();
-        return;
-    }
-
-    const btn = event.submitter || document.querySelector('#serviceForm button[type="submit"]');
+    if (event && event.preventDefault) event.preventDefault();
+    const form        = document.getElementById('serviceForm');
+    const serviceName = form.querySelector('[name="service_name"]')?.value ?? '';
+    const serviceDesc = form.querySelector('[name="description"]')?.value ?? '';
+    if (!serviceName.trim()) { showToast('Service name is required.', 'danger'); form.querySelector('[name="service_name"]')?.focus(); return; }
+    if (!serviceDesc.trim()) { showToast('Service description is required.', 'danger'); form.querySelector('[name="description"]')?.focus(); return; }
+    const btn = document.getElementById('svcSaveBtn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
-
-    adminFetch(
-        '../backend/save_service.php',
-        new FormData(document.getElementById('serviceForm')),
-        (data) => {
-            window.location.href = 'dashboard.php?page=services';
-        },
-        (errMsg) => {
-            showToast(errMsg, 'danger');
-            if (btn) { btn.disabled = false; btn.innerHTML = 'Save Service'; }
-        }
+    adminFetch('../backend/save_service.php', new FormData(form),
+        data => redirectWithToast('dashboard.php?page=services', data.message, 'success'),
+        errMsg => { showToast(errMsg, 'danger'); if (btn) { btn.disabled = false; btn.innerHTML = 'Save Service'; } }
     );
 }
 
@@ -436,7 +413,6 @@ function initServiceModalListeners() {
         if (e.key === 'Escape') { closeServiceModal(); closeSvcDeleteConfirm(); }
     });
 }
-
 document.addEventListener('DOMContentLoaded', initServiceModalListeners);
 
 
@@ -501,9 +477,7 @@ function closeMsgDeleteConfirm() {
 }
 
 function executeMsgDelete() {
-    if (_msgDeleteId) {
-        window.location.href = `../backend/delete_message.php?id=${_msgDeleteId}`;
-    }
+    if (_msgDeleteId) window.location.href = `../backend/delete_message.php?id=${_msgDeleteId}`;
 }
 
 function viewMessage(id) {
@@ -514,7 +488,7 @@ function viewMessage(id) {
         .then(r => r.json())
         .then(data => {
             if (!data.success) { showToast('Could not load message.', 'danger'); return; }
-            const msg = data.data;
+            const msg  = data.data;
             document.getElementById('mmAvatar').textContent    = (msg.full_name || '?').trim().charAt(0).toUpperCase();
             document.getElementById('mmName').textContent      = msg.full_name || '—';
             document.getElementById('mmEmailSub').textContent  = msg.email    || '—';
@@ -523,11 +497,10 @@ function viewMessage(id) {
             const date = new Date(msg.created_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
             const isReplied = msg.is_replied == 1;
             const isRead    = msg.is_read    == 1;
-
             let sc, si, sl;
-            if (isReplied)     { sc = 'replied'; si = 'fa-reply';  sl = 'Replied'; }
-            else if (isRead)   { sc = 'read';    si = 'fa-check';  sl = 'Read';    }
-            else               { sc = 'unread';  si = 'fa-circle'; sl = 'Unread';  }
+            if (isReplied)   { sc = 'replied'; si = 'fa-reply';  sl = 'Replied'; }
+            else if (isRead) { sc = 'read';    si = 'fa-check';  sl = 'Read';    }
+            else             { sc = 'unread';  si = 'fa-circle'; sl = 'Unread';  }
 
             let chips = `
                 <span class="mm-meta-chip mm-status-chip ${sc}"><i class="fas ${si}" style="font-size:.65rem;"></i> ${sl}</span>
@@ -537,11 +510,12 @@ function viewMessage(id) {
             if (msg.phone)          chips += `<span class="mm-meta-chip"><i class="fas fa-phone"></i> ${escHtml(msg.phone)}</span>`;
             if (msg.service_needed) chips += `<span class="mm-meta-chip svc-chip"><i class="fas fa-cog"></i> ${escHtml(msg.service_needed)}</span>`;
 
-            document.getElementById('mmMetaRow').innerHTML   = chips;
+            document.getElementById('mmMetaRow').innerHTML      = chips;
             document.getElementById('mmMessageBox').textContent = msg.message || '(no message body)';
             document.getElementById('messageModal').classList.add('active');
             document.body.style.overflow = 'hidden';
 
+            // Optimistically mark row as read in the table
             document.querySelectorAll('#messagesTable tbody tr').forEach(row => {
                 if (row.querySelector(`[onclick="viewMessage(${id})"]`)) {
                     const badge = row.querySelector('.status-badge');
@@ -564,11 +538,7 @@ function closeMessageModal() {
 
 function sendReply() {
     const body = document.getElementById('mmReplyTextarea').value.trim();
-    if (!body) {
-        showToast('Please type a reply before sending.', 'warning');
-        document.getElementById('mmReplyTextarea').focus();
-        return;
-    }
+    if (!body) { showToast('Please type a reply before sending.', 'warning'); document.getElementById('mmReplyTextarea').focus(); return; }
 
     const btn = document.getElementById('mmSendReplyBtn');
     btn.disabled = true;
@@ -583,27 +553,20 @@ function sendReply() {
         .then(text => {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Reply';
-            try {
-                const data = JSON.parse(text);
-                if (data.success) {
-                    const id = currentMessageId;
-                    closeMessageModal();
-                    showToast(data.message, 'success');
-                    document.querySelectorAll('#messagesTable tbody tr').forEach(row => {
-                        if (row.querySelector(`[onclick="viewMessage(${id})"]`)) {
-                            const badge = row.querySelector('.status-badge');
-                            if (badge) {
-                                badge.className = 'status-badge replied';
-                                badge.innerHTML = '<i class="fas fa-reply"></i> Replied';
-                                row.setAttribute('data-status', 'replied');
-                            }
-                        }
-                    });
-                } else {
-                    showToast(data.message || 'Failed to send reply.', 'danger');
-                }
-            } catch (e) {
-                showToast('Server error. Please check the browser console.', 'danger');
+            let data;
+            try { data = JSON.parse(text); } catch (e) { showToast('Server error. Check console.', 'danger'); return; }
+            if (data.success) {
+                const id = currentMessageId;
+                closeMessageModal();
+                showToast(data.message, 'success');
+                document.querySelectorAll('#messagesTable tbody tr').forEach(row => {
+                    if (row.querySelector(`[onclick="viewMessage(${id})"]`)) {
+                        const badge = row.querySelector('.status-badge');
+                        if (badge) { badge.className = 'status-badge replied'; badge.innerHTML = '<i class="fas fa-reply"></i> Replied'; row.setAttribute('data-status', 'replied'); }
+                    }
+                });
+            } else {
+                showToast(data.message || 'Failed to send reply.', 'danger');
             }
         })
         .catch(() => {
@@ -614,25 +577,16 @@ function sendReply() {
 }
 
 function initMessagesPageListeners() {
-    document.getElementById('messageModal')?.addEventListener('click', e => {
-        if (e.target === e.currentTarget) closeMessageModal();
-    });
-    document.getElementById('msgDeleteConfirmModal')?.addEventListener('click', e => {
-        if (e.target === e.currentTarget) closeMsgDeleteConfirm();
-    });
-    document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') { closeMessageModal(); closeMsgDeleteConfirm(); }
-    });
+    document.getElementById('messageModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeMessageModal(); });
+    document.getElementById('msgDeleteConfirmModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeMsgDeleteConfirm(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeMessageModal(); closeMsgDeleteConfirm(); } });
     initMessageBadges();
 }
-
 document.addEventListener('DOMContentLoaded', initMessagesPageListeners);
 
 function escHtml(str) {
     if (!str) return '';
-    return String(str).replace(/[&<>"']/g, m => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
-    }[m]));
+    return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 }
 
 
@@ -652,20 +606,17 @@ function supGetAllRows() {
 function supApplyFilters() {
     const query   = (document.getElementById('supSearchInput')?.value ?? '').toLowerCase().trim();
     const allRows = supGetAllRows();
-
     _supMatchingRows = allRows.filter(row => {
         const catMatch    = _supCurrentCat === 'all' || row.getAttribute('data-cat') === String(_supCurrentCat);
         const searchMatch = query === '' || (row.getAttribute('data-search') ?? '').includes(query);
         return catMatch && searchMatch;
     });
-
     supRenderPage();
 }
 
 function supRenderPage() {
     const total      = _supMatchingRows.length;
     const totalPages = Math.max(1, Math.ceil(total / SUP_PER_PAGE));
-
     if (_supCurrentPage > totalPages) _supCurrentPage = totalPages;
     if (_supCurrentPage < 1)          _supCurrentPage = 1;
 
@@ -673,9 +624,7 @@ function supRenderPage() {
     const end   = start + SUP_PER_PAGE;
 
     supGetAllRows().forEach(r => r.style.display = 'none');
-    _supMatchingRows.forEach((r, i) => {
-        r.style.display = (i >= start && i < end) ? '' : 'none';
-    });
+    _supMatchingRows.forEach((r, i) => { r.style.display = (i >= start && i < end) ? '' : 'none'; });
 
     const noRes = document.getElementById('supNoResults');
     if (noRes) noRes.style.display = total === 0 ? '' : 'none';
@@ -684,7 +633,6 @@ function supRenderPage() {
     const infoEl = document.getElementById('supPagInfo');
     const btnsEl = document.getElementById('supPagBtns');
     if (!bar) return;
-
     if (total === 0) { bar.style.display = 'none'; return; }
 
     bar.style.display = 'flex';
@@ -692,13 +640,11 @@ function supRenderPage() {
 
     btnsEl.innerHTML = '';
     const prevBtn = supMakePagBtn('<i class="fas fa-chevron-left"></i>', _supCurrentPage <= 1, () => supGoToPage(_supCurrentPage - 1));
-    if (_supCurrentPage <= 1) prevBtn.classList.add('disabled');
     btnsEl.appendChild(prevBtn);
 
     const range  = 2;
     const pStart = Math.max(1, _supCurrentPage - range);
     const pEnd   = Math.min(totalPages, _supCurrentPage + range);
-
     if (pStart > 1) { btnsEl.appendChild(supMakePagBtn('1', false, () => supGoToPage(1))); if (pStart > 2) btnsEl.appendChild(supMakeEllipsis()); }
     for (let p = pStart; p <= pEnd; p++) {
         const btn = supMakePagBtn(String(p), false, () => supGoToPage(p));
@@ -709,7 +655,6 @@ function supRenderPage() {
     if (pEnd < totalPages) btnsEl.appendChild(supMakePagBtn(String(totalPages), false, () => supGoToPage(totalPages)));
 
     const nextBtn = supMakePagBtn('<i class="fas fa-chevron-right"></i>', _supCurrentPage >= totalPages, () => supGoToPage(_supCurrentPage + 1));
-    if (_supCurrentPage >= totalPages) nextBtn.classList.add('disabled');
     btnsEl.appendChild(nextBtn);
 }
 
@@ -729,27 +674,16 @@ function supMakeEllipsis() {
     return span;
 }
 
-function supGoToPage(p) {
-    _supCurrentPage = p;
-    supRenderPage();
-}
+function supGoToPage(p) { _supCurrentPage = p; supRenderPage(); }
 
 function switchSupTab(btn, cat) {
     document.querySelectorAll('.sup-tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
-
     const supView = document.getElementById('suppliesView');
     const catView = document.getElementById('categoriesView');
-
-    if (cat === 'categories') {
-        supView.style.display = 'none';
-        catView.style.display = '';
-        return;
-    }
-
+    if (cat === 'categories') { supView.style.display = 'none'; catView.style.display = ''; return; }
     catView.style.display = 'none';
     supView.style.display = '';
-
     _supCurrentCat  = cat;
     _supCurrentPage = 1;
     supApplyFilters();
@@ -765,20 +699,14 @@ function openAddSupplyModal() {
     document.getElementById('supplyModal').classList.add('active');
 }
 
-function closeSupplyModal() {
-    document.getElementById('supplyModal').classList.remove('active');
-}
+function closeSupplyModal() { document.getElementById('supplyModal').classList.remove('active'); }
 
 function previewSupplyImg(input) {
     const preview = document.getElementById('supImgPreview');
     preview.innerHTML = '';
     if (input.files && input.files[0]) {
         const reader = new FileReader();
-        reader.onload = e => {
-            const img = document.createElement('img');
-            img.src = e.target.result;
-            preview.appendChild(img);
-        };
+        reader.onload = e => { const img = document.createElement('img'); img.src = e.target.result; preview.appendChild(img); };
         reader.readAsDataURL(input.files[0]);
     }
 }
@@ -789,22 +717,21 @@ function editSupply(id) {
         .then(data => {
             if (!data.success) { showToast('Could not load supply.', 'danger'); return; }
             const s = data.data;
-            document.getElementById('supplyModalTitle').innerText  = 'Edit Supply';
-            document.getElementById('supplyId').value              = s.id;
-            document.getElementById('supCategory').value           = s.category_id;
-            document.getElementById('supName').value               = s.supply_name;
-            document.getElementById('supDescription').value        = s.description || '';
-            document.getElementById('supOrder').value              = s.sort_order;
-            document.getElementById('supActive').checked           = s.is_active == 1;
-            document.getElementById('supplySubmitBtn').disabled    = false;
-            document.getElementById('supplySubmitBtn').innerHTML   = 'Save Supply';
-
+            document.getElementById('supplyModalTitle').innerText = 'Edit Supply';
+            document.getElementById('supplyId').value             = s.id;
+            document.getElementById('supCategory').value          = s.category_id;
+            document.getElementById('supName').value              = s.supply_name;
+            document.getElementById('supDescription').value       = s.description || '';
+            document.getElementById('supOrder').value             = s.sort_order;
+            document.getElementById('supActive').checked          = s.is_active == 1;
+            document.getElementById('supplySubmitBtn').disabled   = false;
+            document.getElementById('supplySubmitBtn').innerHTML  = 'Save Supply';
             const preview = document.getElementById('supImgPreview');
             preview.innerHTML = '';
             if (s.image_path) {
                 const img = document.createElement('img');
-                img.src   = window.UPLOADS_URL + s.image_path;
-                img.alt   = s.supply_name;
+                img.src = window.UPLOADS_URL + s.image_path;
+                img.alt = s.supply_name;
                 img.onerror = () => preview.innerHTML = '';
                 preview.appendChild(img);
             }
@@ -814,37 +741,17 @@ function editSupply(id) {
 }
 
 function submitSupplyForm(e) {
-    e.preventDefault();
-
-    const supName = document.getElementById('supName').value.trim();
-    const catId   = document.getElementById('supCategory').value;
-
-    if (!catId) {
-        showToast('Please select a category.', 'danger');
-        document.getElementById('supCategory').focus();
-        return;
-    }
-    if (!supName) {
-        showToast('Supply name is required.', 'danger');
-        document.getElementById('supName').focus();
-        return;
-    }
-
+    if (e && e.preventDefault) e.preventDefault();
+    const form    = document.getElementById('supplyForm');
+    const catId   = form.querySelector('[name="category_id"]')?.value ?? '';
+    const supName = form.querySelector('[name="supply_name"]')?.value ?? '';
+    if (!catId)        { showToast('Please select a category.', 'danger'); form.querySelector('[name="category_id"]')?.focus(); return; }
+    if (!supName.trim()) { showToast('Supply name is required.', 'danger'); form.querySelector('[name="supply_name"]')?.focus(); return; }
     const btn = document.getElementById('supplySubmitBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
-
-    adminFetch(
-        '../backend/save_supply.php',
-        new FormData(document.getElementById('supplyForm')),
-        (data) => {
-            window.location.href = 'dashboard.php?page=supplies';
-        },
-        (errMsg) => {
-            showToast(errMsg, 'danger');
-            btn.disabled = false;
-            btn.innerHTML = 'Save Supply';
-        }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
+    adminFetch('../backend/save_supply.php', new FormData(form),
+        data => redirectWithToast('dashboard.php?page=supplies', data.message, 'success'),
+        errMsg => { showToast(errMsg, 'danger'); if (btn) { btn.disabled = false; btn.innerHTML = 'Save Supply'; } }
     );
 }
 
@@ -855,9 +762,7 @@ function openAddCategoryModal() {
     document.getElementById('categoryModal').classList.add('active');
 }
 
-function closeCategoryModal() {
-    document.getElementById('categoryModal').classList.remove('active');
-}
+function closeCategoryModal() { document.getElementById('categoryModal').classList.remove('active'); }
 
 function editCategory(id) {
     fetch(`../backend/get_category.php?id=${id}`)
@@ -877,28 +782,15 @@ function editCategory(id) {
 }
 
 function submitCategoryForm(e) {
-    e.preventDefault();
-
-    const catName = document.getElementById('catName').value.trim();
-    if (!catName) {
-        showToast('Category name is required.', 'danger');
-        document.getElementById('catName').focus();
-        return;
-    }
-
-    const btn = e.submitter || document.querySelector('#categoryForm button[type="submit"]');
+    if (e && e.preventDefault) e.preventDefault();
+    const form    = document.getElementById('categoryForm');
+    const catName = form.querySelector('[name="category_name"]')?.value ?? '';
+    if (!catName.trim()) { showToast('Category name is required.', 'danger'); form.querySelector('[name="category_name"]')?.focus(); return; }
+    const btn = document.getElementById('catSaveBtn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
-
-    adminFetch(
-        '../backend/save_category.php',
-        new FormData(document.getElementById('categoryForm')),
-        (data) => {
-            window.location.href = 'dashboard.php?page=supplies';
-        },
-        (errMsg) => {
-            showToast(errMsg, 'danger');
-            if (btn) { btn.disabled = false; btn.innerHTML = 'Save Category'; }
-        }
+    adminFetch('../backend/save_category.php', new FormData(form),
+        data => redirectWithToast('dashboard.php?page=supplies', data.message, 'success'),
+        errMsg => { showToast(errMsg, 'danger'); if (btn) { btn.disabled = false; btn.innerHTML = 'Save Category'; } }
     );
 }
 
@@ -911,14 +803,8 @@ function openSupplyDeleteConfirm(id, name) {
     document.getElementById('supplyDeleteConfirm').classList.add('active');
 }
 
-function closeSupplyDeleteConfirm() {
-    document.getElementById('supplyDeleteConfirm').classList.remove('active');
-    _delSupId = null;
-}
-
-function executeSupplyDelete() {
-    if (_delSupId) window.location.href = `../backend/delete_supply.php?id=${_delSupId}`;
-}
+function closeSupplyDeleteConfirm() { document.getElementById('supplyDeleteConfirm').classList.remove('active'); _delSupId = null; }
+function executeSupplyDelete()       { if (_delSupId) window.location.href = `../backend/delete_supply.php?id=${_delSupId}`; }
 
 function openCatDeleteConfirm(id, name) {
     _delCatId = id;
@@ -926,33 +812,22 @@ function openCatDeleteConfirm(id, name) {
     document.getElementById('catDeleteConfirm').classList.add('active');
 }
 
-function closeCatDeleteConfirm() {
-    document.getElementById('catDeleteConfirm').classList.remove('active');
-    _delCatId = null;
-}
-
-function executeCatDelete() {
-    if (_delCatId) window.location.href = `../backend/delete_category.php?id=${_delCatId}`;
-}
+function closeCatDeleteConfirm() { document.getElementById('catDeleteConfirm').classList.remove('active'); _delCatId = null; }
+function executeCatDelete()       { if (_delCatId) window.location.href = `../backend/delete_category.php?id=${_delCatId}`; }
 
 function initSuppliesPageListeners() {
     ['supplyModal', 'categoryModal', 'supplyDeleteConfirm', 'catDeleteConfirm'].forEach(id => {
-        document.getElementById(id)?.addEventListener('click', function (e) {
-            if (e.target === this) this.classList.remove('active');
-        });
+        document.getElementById(id)?.addEventListener('click', function (e) { if (e.target === this) this.classList.remove('active'); });
     });
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
-            ['supplyModal', 'categoryModal', 'supplyDeleteConfirm', 'catDeleteConfirm'].forEach(id => {
-                document.getElementById(id)?.classList.remove('active');
-            });
+            ['supplyModal', 'categoryModal', 'supplyDeleteConfirm', 'catDeleteConfirm'].forEach(id => document.getElementById(id)?.classList.remove('active'));
         }
     });
     _supCurrentPage = 1;
     _supCurrentCat  = 'all';
     supApplyFilters();
 }
-
 document.addEventListener('DOMContentLoaded', initSuppliesPageListeners);
 
 
@@ -968,14 +843,8 @@ function openUpdDeleteConfirm(id, title) {
     document.getElementById('updDeleteConfirmModal').classList.add('active');
 }
 
-function closeUpdDeleteConfirm() {
-    document.getElementById('updDeleteConfirmModal').classList.remove('active');
-    _updDeleteId = null;
-}
-
-function executeUpdDelete() {
-    if (_updDeleteId) window.location.href = `../backend/delete_update.php?id=${_updDeleteId}`;
-}
+function closeUpdDeleteConfirm() { document.getElementById('updDeleteConfirmModal').classList.remove('active'); _updDeleteId = null; }
+function executeUpdDelete()       { if (_updDeleteId) window.location.href = `../backend/delete_update.php?id=${_updDeleteId}`; }
 
 function openAddUpdateModal() {
     document.getElementById('updateModalTitle').innerText = 'New Post';
@@ -992,9 +861,7 @@ function openAddUpdateModal() {
     document.getElementById('updateModal').classList.add('active');
 }
 
-function closeUpdateModal() {
-    document.getElementById('updateModal').classList.remove('active');
-}
+function closeUpdateModal() { document.getElementById('updateModal').classList.remove('active'); }
 
 function previewUpdImgs(input) {
     const preview = document.getElementById('updImgPreview');
@@ -1021,15 +888,15 @@ function editUpdate(id) {
         .then(data => {
             if (!data.success) { showToast('Could not load post.', 'danger'); return; }
             const u = data.data;
-            document.getElementById('updateModalTitle').innerText  = 'Edit Post';
-            document.getElementById('updateId').value              = u.id;
-            document.getElementById('updTitle').value              = u.title;
-            document.getElementById('updDescription').value        = u.description;
-            document.getElementById('updOrder').value              = u.sort_order;
-            document.getElementById('updActive').checked           = u.is_active == 1;
-            document.getElementById('updSubmitBtn').disabled       = false;
-            document.getElementById('updSubmitBtn').innerHTML      = '<i class="fas fa-save"></i> Save Post';
-            document.getElementById('updImgPreview').innerHTML     = '';
+            document.getElementById('updateModalTitle').innerText = 'Edit Post';
+            document.getElementById('updateId').value             = u.id;
+            document.getElementById('updTitle').value             = u.title;
+            document.getElementById('updDescription').value       = u.description;
+            document.getElementById('updOrder').value             = u.sort_order;
+            document.getElementById('updActive').checked          = u.is_active == 1;
+            document.getElementById('updSubmitBtn').disabled      = false;
+            document.getElementById('updSubmitBtn').innerHTML     = '<i class="fas fa-save"></i> Save Post';
+            document.getElementById('updImgPreview').innerHTML    = '';
 
             const existingWrap = document.getElementById('updExistingImgs');
             existingWrap.innerHTML = '';
@@ -1050,46 +917,24 @@ function editUpdate(id) {
                 existingWrap.appendChild(row);
             }
 
-            ['updTitle', 'updDescription'].forEach(elId => {
-                document.getElementById(elId)?.dispatchEvent(new Event('input'));
-            });
+            ['updTitle', 'updDescription'].forEach(elId => document.getElementById(elId)?.dispatchEvent(new Event('input')));
             document.getElementById('updateModal').classList.add('active');
         })
         .catch(() => showToast('Network error loading post.', 'danger'));
 }
 
 function submitUpdateForm(e) {
-    e.preventDefault();
-
-    const title = document.getElementById('updTitle').value.trim();
-    const desc  = document.getElementById('updDescription').value.trim();
-
-    if (!title) {
-        showToast('Post title is required.', 'danger');
-        document.getElementById('updTitle').focus();
-        return;
-    }
-    if (!desc) {
-        showToast('Description is required.', 'danger');
-        document.getElementById('updDescription').focus();
-        return;
-    }
-
+    if (e && e.preventDefault) e.preventDefault();
+    const form  = document.getElementById('updateForm');
+    const title = form.querySelector('[name="title"]')?.value ?? '';
+    const desc  = form.querySelector('[name="description"]')?.value ?? '';
+    if (!title.trim()) { showToast('Post title is required.', 'danger'); form.querySelector('[name="title"]')?.focus(); return; }
+    if (!desc.trim())  { showToast('Description is required.', 'danger'); form.querySelector('[name="description"]')?.focus(); return; }
     const btn = document.getElementById('updSubmitBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
-
-    adminFetch(
-        '../backend/save_update.php',
-        new FormData(document.getElementById('updateForm')),
-        (data) => {
-            window.location.href = 'dashboard.php?page=updates';
-        },
-        (errMsg) => {
-            showToast(errMsg, 'danger');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-save"></i> Save Post';
-        }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
+    adminFetch('../backend/save_update.php', new FormData(form),
+        data => redirectWithToast('dashboard.php?page=updates', data.message, 'success'),
+        errMsg => { showToast(errMsg, 'danger'); if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Save Post'; } }
     );
 }
 
@@ -1109,17 +954,10 @@ function bindCharCount(inputId, countId, max) {
 function initUpdatesPage() {
     bindCharCount('updTitle',       'updTitleCount', 120);
     bindCharCount('updDescription', 'updDescCount',  400);
-    document.getElementById('updateModal')?.addEventListener('click', e => {
-        if (e.target === e.currentTarget) closeUpdateModal();
-    });
-    document.getElementById('updDeleteConfirmModal')?.addEventListener('click', e => {
-        if (e.target === e.currentTarget) closeUpdDeleteConfirm();
-    });
-    document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') { closeUpdateModal(); closeUpdDeleteConfirm(); }
-    });
+    document.getElementById('updateModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeUpdateModal(); });
+    document.getElementById('updDeleteConfirmModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeUpdDeleteConfirm(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeUpdateModal(); closeUpdDeleteConfirm(); } });
 }
-
 document.addEventListener('DOMContentLoaded', initUpdatesPage);
 
 
@@ -1131,7 +969,7 @@ function statsLivePreview(id, card) {
     const val    = card.querySelector('input[name="values[]"]').value   || '0';
     const suffix = card.querySelector('input[name="suffixes[]"]').value || '';
     const label  = card.querySelector('input[name="labels[]"]').value   || '';
-    const prev = document.getElementById(`preview_${id}`);
+    const prev   = document.getElementById(`preview_${id}`);
     if (!prev) return;
     prev.querySelector('.stats-preview-number').textContent = val + suffix;
     prev.querySelector('.stats-preview-label').textContent  = label;
@@ -1146,7 +984,6 @@ function statsTogglePreview(id, active) {
 
 function saveStats(e) {
     e.preventDefault();
-
     const btn = document.getElementById('statsSaveBtn');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
@@ -1154,12 +991,12 @@ function saveStats(e) {
     adminFetch(
         '../backend/save_stats.php',
         new FormData(document.getElementById('statsForm')),
-        (data) => {
+        data => {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-save"></i> Save All Stats';
-            showToast('Stats updated successfully. Changes are now live on the website.', 'success');
+            showToast(data.message || 'Stats updated successfully.', 'success');
         },
-        (errMsg) => {
+        errMsg => {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-save"></i> Save All Stats';
             showToast(`Failed to save: ${errMsg}`, 'danger');
@@ -1177,9 +1014,7 @@ function previewImage(inputId, previewId) {
     const preview = document.getElementById(previewId);
     if (!input || !input.files || !input.files[0]) return;
     const reader = new FileReader();
-    reader.onload = e => {
-        if (preview) { preview.src = e.target.result; preview.style.display = 'block'; }
-    };
+    reader.onload = e => { if (preview) { preview.src = e.target.result; preview.style.display = 'block'; } };
     reader.readAsDataURL(input.files[0]);
 }
 
