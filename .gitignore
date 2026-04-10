@@ -11,6 +11,9 @@ node_modules/
 # PHP / Composer
 vendor/
 
+# User Uploads
+uploads/
+
 # Security (NEVER push your environment variables)
 .env
 .env.*
