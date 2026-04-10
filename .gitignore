@@ -6,6 +6,12 @@ __v0_jsx-dev-runtime.ts
 # Common ignores
 node_modules/
 .next/
-
-.env*.local
 .DS_Store
+
+# PHP / Composer
+vendor/
+
+# Security (NEVER push your environment variables)
+.env
+.env.*
+*.local
